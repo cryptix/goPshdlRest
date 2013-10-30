@@ -15,6 +15,7 @@ func main() {
 	}
 
 	switch os.Args[1] {
+
 	case "open":
 		wp, err := OpenWorkspace(os.Args[2])
 		if err != nil {
@@ -23,20 +24,27 @@ func main() {
 		}
 		fmt.Println("WP Found:", wp)
 		fmt.Println("Files:", wp.Files)
-		// copy files to temp dir
+		err = wp.DownloadAllFiles()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("All files Downloaded, watching..")
+		wp.watch(wp.Id)
+
 	case "new":
-		wp, err := NewWorkspace("Henry", "crypt@me.com")
+		wp, err := NewWorkspace("JohnGo", "none@me.com")
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 			os.Exit(1)
 		}
 		fmt.Println("WP Created:", wp.Id)
-		watchWorskpace(os.Args[2], wp)
+		wp.watch(os.Args[2])
 	}
 
 }
 
-func watchWorskpace(dir string, wp *PshdlWorkspace) {
+func (wp *PshdlWorkspace) watch(dir string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)

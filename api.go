@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -26,6 +27,13 @@ type PshdlWorkspace struct {
 	Files           []PshdlApiFile
 	LastValidation  int
 	Validated       bool
+}
+
+func (wp PshdlWorkspace) String() string {
+	if wp.Id == "" {
+		return fmt.Sprintf("http://%s%s", host, workspaceUrl)
+	}
+	return fmt.Sprintf("http://%s%s%s", host, workspaceUrl, wp.Id)
 }
 
 type PshdlApiFile struct {
@@ -47,7 +55,7 @@ func (file PshdlApiFile) String() (str string) {
 	if len(file.Info.Problems) > 0 {
 		str += fmt.Sprintf("Problems:\n")
 		for _, prob := range file.Info.Problems {
-			str += fmt.Sprintf("* %s\n", prob.ErrorCode)
+			str += fmt.Sprintf("%4d: %s\n", prob.Location.Line, prob.ErrorCode)
 		}
 	} else {
 		str += fmt.Sprintf("No Problems.")
@@ -69,13 +77,6 @@ type PshdlApiProblem struct {
 	ErrorCode string
 	Severity  string
 	Syntax    bool
-}
-
-func (wp PshdlWorkspace) String() string {
-	if wp.Id == "" {
-		return fmt.Sprintf("http://%s%s", host, workspaceUrl)
-	}
-	return fmt.Sprintf("http://%s%s%s", host, workspaceUrl, wp.Id)
 }
 
 func OpenWorkspace(id string) (*PshdlWorkspace, error) {
@@ -164,6 +165,61 @@ func (wp *PshdlWorkspace) Validate() error {
 	}
 
 	return nil
+}
+
+func (wp *PshdlWorkspace) DownloadAllFiles() error {
+
+	// probe folder
+	err := os.Mkdir(wp.Id, 0700)
+	if err != nil {
+		return err
+	}
+
+	done := make(chan bool)
+	fileCount := len(wp.Files)
+	start := time.Now()
+
+	for _, file := range wp.Files {
+		go func(file PshdlApiFile) {
+			url := fmt.Sprintf("http://%s%s", host, file.Record.FileURI)
+			resp, err := http.Get(url)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not http.Get %s - %s\n", file.Record.RelPath, err)
+				done <- false
+				return
+			}
+			defer resp.Body.Close()
+
+			fname := fmt.Sprintf("%s/%s", wp.Id, file.Record.RelPath)
+			out, err := os.Create(fname)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not os.Create file %s - %s\n", file.Record.RelPath, err)
+				done <- false
+				return
+			}
+
+			io.Copy(out, resp.Body)
+			done <- true
+		}(file)
+	}
+
+	for {
+		select {
+		case worked := <-done:
+			if worked == false {
+				close(done)
+				return fmt.Errorf("Could not load all files.")
+			}
+
+			fileCount -= 1
+			if fileCount == 0 {
+				return nil
+			}
+
+		case <-time.After(3 * time.Second):
+			fmt.Fprintf(os.Stderr, "Waiting.. %d files left. Duration: %s\n", fileCount, time.Since(start))
+		}
+	}
 }
 
 func (wp *PshdlWorkspace) createWorkspace() error {
