@@ -182,7 +182,10 @@ func (wp *PshdlWorkspace) DownloadAllFiles() error {
 	for _, file := range wp.Files {
 		go func(file PshdlApiFile) {
 			url := fmt.Sprintf("http://%s%s", host, file.Record.FileURI)
-			resp, err := http.Get(url)
+			req, _ := http.NewRequest("GET", url, nil)
+			req.Header.Set("Accept", "text/plain")
+			client := &http.Client{}
+			resp, err := client.Do(req)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Could not http.Get %s - %s\n", file.Record.RelPath, err)
 				done <- false
