@@ -62,16 +62,16 @@ func main() {
 			for {
 				select {
 				case ev := <-wp.Events:
+					subj := ev.GetSubject()
+					switch {
 
-					switch ev.GetSubject() {
-
-					case "P:WORKSPACE:UPDATED":
-						fmt.Println("Worskpace Updated")
+					case strings.HasPrefix(subj, "P:WORKSPACE:"):
+						fmt.Println("Worskpace Changed:", subj)
 						for _, file := range ev.GetFiles() {
 							fmt.Printf("[*] %s\n", file.RelPath)
 						}
 
-					case "P:COMPILER:VHDL":
+					case subj == "P:COMPILER:VHDL":
 						fmt.Println("New VHDL Code")
 						errc := make(chan error)
 						files := ev.GetFiles()
@@ -101,9 +101,8 @@ func main() {
 								}
 							}
 						}
-
-					default:
-						fmt.Printf("Unhandled Event.\nSubject: %s\n%#v\n", ev.GetSubject(), ev)
+					case subj == "P:COMPILER:C":
+						fmt.Println("New C-Sim Code")
 					}
 				}
 			}

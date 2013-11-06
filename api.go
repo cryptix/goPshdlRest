@@ -62,7 +62,8 @@ func (f *PshdlApiRecord) DownloadFile(errc chan error) {
 	defer resp.Body.Close()
 
 	// dirty hack
-	out, err := os.Create(f.RelPath[len("src-gen/"):])
+	parts := strings.Split(f.RelPath, "/")
+	out, err := os.Create(parts[len(parts)-1])
 	if err != nil {
 		errc <- fmt.Errorf("Could not os.Create file %s - %s\n", f.RelPath, err)
 		return
@@ -204,6 +205,8 @@ func (wp *PshdlWorkspace) DownloadAllFiles() error {
 		return err
 	}
 
+	os.Chdir(wp.Id)
+
 	done := make(chan error)
 	fileCount := len(wp.Files)
 
@@ -229,6 +232,7 @@ func (wp *PshdlWorkspace) DownloadAllFiles() error {
 
 			fileCount -= 1
 			if fileCount == 0 {
+				os.Chdir("..")
 				return nil
 			}
 

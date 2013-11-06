@@ -14,50 +14,6 @@ type PshdlApiStreamingEvent interface {
 	GetFiles() []PshdlApiRecord
 }
 
-type PshdlApiWorskpaceUpdatedEvent struct {
-	Subject   string
-	MsgType   string
-	TimeStamp int
-	Contents  []PshdlApiFile
-}
-
-func (ev *PshdlApiWorskpaceUpdatedEvent) GetSubject() string {
-	return ev.Subject
-}
-
-func (ev *PshdlApiWorskpaceUpdatedEvent) GetFiles() []PshdlApiRecord {
-	files := make([]PshdlApiRecord, len(ev.Contents))
-	for i, f := range ev.Contents {
-		files[i] = f.Record
-	}
-	return files
-}
-
-type PshdlApiCompiledVhdEvent struct {
-	Subject   string
-	MsgType   string
-	TimeStamp int
-	Contents  []struct {
-		Created  int
-		Problems []PshdlApiProblem
-		Files    []PshdlApiRecord
-	}
-}
-
-func (ev *PshdlApiCompiledVhdEvent) GetSubject() string {
-	return ev.Subject
-}
-
-func (ev *PshdlApiCompiledVhdEvent) GetFiles() []PshdlApiRecord {
-	files := make([]PshdlApiRecord, len(ev.Contents))
-	for i, f := range ev.Contents {
-		if len(f.Files) == 1 {
-			files[i] = f.Files[0]
-		}
-	}
-	return files
-}
-
 func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 	// todo we need a unique client id!
 	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/%d/sse", ApiHost, wp.Id, rand.Intn(128))
@@ -88,10 +44,19 @@ func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 			switch peek.Subject {
 
 			case "P:COMPILER:VHDL":
-				apiEvent = new(PshdlApiCompiledVhdEvent)
+				apiEvent = new(PshdlApiCompilerVhdlEvent)
+
+			case "P:COMPILER:C":
+				apiEvent = new(PShdlApiCompilerCEvent)
+
+			case "P:WORKSPACE:ADDED":
+				apiEvent = new(PshdlApiWorskpaceUpdatedEvent)
 
 			case "P:WORKSPACE:UPDATED":
 				apiEvent = new(PshdlApiWorskpaceUpdatedEvent)
+
+			case "P:WORKSPACE:DELETED":
+				apiEvent = new(PshdlApiWorskpaceDeletedEvent)
 
 			default:
 				fmt.Fprintf(os.Stderr, "Error unhandeld event type!:%v\n", peek)
