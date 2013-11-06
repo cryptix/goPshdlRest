@@ -47,6 +47,32 @@ type PshdlApiFile struct {
 	}
 }
 
+func (f *PshdlApiRecord) DownloadFile(errc chan error) {
+	url := fmt.Sprintf("http://%s%s", ApiHost, f.FileURI)
+
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Accept", "text/plain")
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		errc <- fmt.Errorf("Could not http.Get %s - %s\n", f.RelPath, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	// dirty hack
+	out, err := os.Create(f.RelPath[len("src-gen/"):])
+	if err != nil {
+		errc <- fmt.Errorf("Could not os.Create file %s - %s\n", f.RelPath, err)
+		return
+	}
+	defer out.Close()
+
+	io.Copy(out, resp.Body)
+	errc <- nil
+}
+
 type PshdlApiRecord struct {
 	RelPath      string
 	FileURI      string
@@ -178,7 +204,7 @@ func (wp *PshdlWorkspace) DownloadAllFiles() error {
 		return err
 	}
 
-	done := make(chan bool)
+	done := make(chan error)
 	fileCount := len(wp.Files)
 
 	if fileCount == 0 {
@@ -188,38 +214,17 @@ func (wp *PshdlWorkspace) DownloadAllFiles() error {
 	start := time.Now()
 
 	for _, file := range wp.Files {
-		go func(file PshdlApiFile) {
-			url := fmt.Sprintf("http://%s%s", ApiHost, file.Record.FileURI)
-			req, _ := http.NewRequest("GET", url, nil)
-			req.Header.Set("Accept", "text/plain")
-			client := &http.Client{}
-			resp, err := client.Do(req)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not http.Get %s - %s\n", file.Record.RelPath, err)
-				done <- false
-				return
-			}
-			defer resp.Body.Close()
-
-			fname := fmt.Sprintf("%s/%s", wp.Id, file.Record.RelPath)
-			out, err := os.Create(fname)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Could not os.Create file %s - %s\n", file.Record.RelPath, err)
-				done <- false
-				return
-			}
-
-			io.Copy(out, resp.Body)
-			done <- true
-		}(file)
+		go func(f PshdlApiRecord) {
+			f.DownloadFile(done)
+		}(file.Record)
 	}
 
 	for {
 		select {
-		case worked := <-done:
-			if worked == false {
+		case err := <-done:
+			if err != nil {
 				close(done)
-				return fmt.Errorf("Could not load all files.")
+				return fmt.Errorf("Could not load all files. %s", err)
 			}
 
 			fileCount -= 1
