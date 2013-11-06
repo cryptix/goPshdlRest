@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"strings"
+
+	"github.com/cryptix/goSSEClient"
 )
 
 type PshdlApiStreamingEvent interface {
@@ -59,55 +57,33 @@ func (ev *PshdlApiCompiledVhdEvent) GetFiles() []PshdlApiRecord {
 	return files
 }
 
-func (wp *PshdlWorkspace) OpenEventStream(events chan PshdlApiStreamingEvent, done chan bool) error {
-
+func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
+	// todo we need a unique client id!
 	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/1/sse", ApiHost, wp.Id)
 
-	resp, err := http.Get(url)
+	sseEvent, err := goSSEClient.OpenSSEUrl(url)
 	if err != nil {
+		done <- false
 		return err
 	}
 
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("Error: resp.StatusCode == %d\n", resp.StatusCode)
-	}
+	wp.Events = make(chan PshdlApiStreamingEvent)
 
-	go processStream(resp.Body, events, done)
+	go func() {
+		for ev := range sseEvent {
+			// doenst work since we need to unmarshal data twice depending on MsgType..
+			// dec := json.NewDecoder(&ev.Data)
+			// err := dec.Unmarshal(&ApiEvent)
 
-	return nil
-}
-
-func processStream(body io.ReadCloser, events chan PshdlApiStreamingEvent, done chan bool) {
-	var evBuf string
-
-	buffed := bufio.NewReader(body)
-	for {
-		line, err := buffed.ReadString('\n')
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error during resp.Body read:%s\n", err)
-			done <- false
-		}
-
-		switch {
-
-		// start of event
-		case strings.HasPrefix(line, "id:"):
-			// todo: regexp
-			// parts := strings.Split(line, ":")
-
-		// event data
-		case strings.HasPrefix(line, "data:"):
-			evBuf += line[6:]
-
-		// end of event
-		case len(line) == 1:
 			var peek struct {
 				Subject string
 				MsgType string
 			}
-			err := json.Unmarshal([]byte(evBuf), &peek)
+			data := ev.Data.Bytes()
+
+			err := json.Unmarshal(data, &peek)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error during Event Unmarshal:%s\n", err)
+				fmt.Fprintf(os.Stderr, "Error during Peek Unmarshal:%s\n", err)
 				done <- false
 			}
 
@@ -123,19 +99,18 @@ func processStream(body io.ReadCloser, events chan PshdlApiStreamingEvent, done 
 				done <- false
 			}
 
-			err = json.Unmarshal([]byte(evBuf), ev)
+			err = json.Unmarshal(data, &ev)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error during Event Unmarshal:%s\n", err)
 				done <- false
 			} else {
-				events <- ev
+				wp.Events <- ev
 			}
 
-			// create fresh event
-			evBuf = ""
-
-		default:
-			fmt.Fprintf(os.Stderr, "Error during EventReadLoop - Default triggerd! len:%d\n%s", len(line), line)
 		}
-	}
+		fmt.Fprintln(os.Stderr, "SSEvent chan was closed.")
+		done <- true
+	}()
+
+	return nil
 }

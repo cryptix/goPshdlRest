@@ -27,6 +27,7 @@ type PshdlWorkspace struct {
 	Files           []PshdlApiFile
 	LastValidation  int
 	Validated       bool
+	Events          chan PshdlApiStreamingEvent
 }
 
 func (wp PshdlWorkspace) String() string {

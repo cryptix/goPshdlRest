@@ -48,20 +48,21 @@ func main() {
 			os.Exit(1)
 		}
 
-		events := make(chan PshdlApiStreamingEvent)
 		done := make(chan bool)
-		err = wp.OpenEventStream(events, done)
+		err = wp.OpenEventStream(done)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 			os.Exit(1)
 		}
 
-		go func(events chan PshdlApiStreamingEvent) {
+		fmt.Println("Iterating over events")
+		go func() {
 			for {
 				select {
-				case ev := <-events:
+				case ev := <-wp.Events:
 
 					switch ev.GetSubject() {
+
 					case "P:WORKSPACE:UPDATED":
 						fmt.Println("Worskpace Updated")
 						for _, file := range ev.GetFiles() {
@@ -79,7 +80,7 @@ func main() {
 					}
 				}
 			}
-		}(events)
+		}()
 
 		<-done
 
