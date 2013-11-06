@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 
 	"github.com/cryptix/goSSEClient"
@@ -59,7 +60,7 @@ func (ev *PshdlApiCompiledVhdEvent) GetFiles() []PshdlApiRecord {
 
 func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 	// todo we need a unique client id!
-	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/123/sse", ApiHost, wp.Id)
+	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/%d/sse", ApiHost, wp.Id, rand.Intn(128))
 
 	sseEvent, err := goSSEClient.OpenSSEUrl(url)
 	if err != nil {
