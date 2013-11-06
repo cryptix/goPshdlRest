@@ -15,7 +15,7 @@ _I am working on precompiled binaries, too. If you don't want to program in go y
 
 ## Usage
 
-Currently there are two commands. __open__ and __new__.
+Currently there are three commands. __open__, __new__ and __stream__.
 
 
 ### Open
@@ -34,9 +34,16 @@ This Requests a new workspace on the API. It also starts watching the supplied p
 goPSHDLwpsync new <path>
 ```
 
+### Stream
+This uses the streaming API to hook on events.
+Currently it downloads generated vhdl to the cwd once it is recompiled and notifies when pshdl code is updated.
+
+```
+goPSHDLwpsync stream <wid>
+```
 
 ## TODO/Ideas
 
-* Add a Watch command to fetch compiled simulation files.
+* Add flags to configure behaviour
 * Supply Problems and Errors to editors (for [SublimeLinter](https://github.com/SublimeLinter/SublimeLinter) for instance)
 * Add command line options to set Name and Email for new workspaces
