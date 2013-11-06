@@ -10,7 +10,7 @@ import (
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "usage: %s <open|new> <id|path>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s <open|new|stream> <id|path>\n", os.Args[0])
 		os.Exit(1)
 	}
 
@@ -40,8 +40,54 @@ func main() {
 		}
 		fmt.Println("WP Created:", wp.Id)
 		wp.watch(os.Args[2])
-	}
 
+	case "stream":
+		wp, err := OpenWorkspace(os.Args[2])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			os.Exit(1)
+		}
+
+		events := make(chan PshdlApiStreamingEvent)
+		done := make(chan bool)
+		err = wp.OpenEventStream(events, done)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			os.Exit(1)
+		}
+
+		go func(events chan PshdlApiStreamingEvent) {
+			for {
+				select {
+				case ev := <-events:
+
+					switch ev.GetSubject() {
+					case "P:WORKSPACE:UPDATED":
+						fmt.Println("Worskpace Updated")
+						for _, file := range ev.GetFiles() {
+							fmt.Printf("[*] %s\n", file.RelPath)
+						}
+
+					case "P:COMPILER:VHDL":
+						fmt.Println("New VHDL")
+						for _, file := range ev.GetFiles() {
+							fmt.Printf("[*] %s\n", file.RelPath)
+						}
+
+					default:
+						fmt.Printf("Unhandled Event.\nSubject: %s\n%#v\n", ev.GetSubject(), ev)
+					}
+				}
+			}
+		}(events)
+
+		<-done
+
+	default:
+		fmt.Fprintf(os.Stderr, "Error: Unknown command %s\n", os.Args[1])
+		os.Exit(1)
+
+	}
 }
 
 func (wp *PshdlWorkspace) watch(dir string) {

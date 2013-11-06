@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	host         = "api.pshdl.org"
+	ApiHost      = "api.pshdl.org"
 	workspaceUrl = "/api/v0.1/workspace/"
 )
 
@@ -31,23 +31,25 @@ type PshdlWorkspace struct {
 
 func (wp PshdlWorkspace) String() string {
 	if wp.Id == "" {
-		return fmt.Sprintf("http://%s%s", host, workspaceUrl)
+		return fmt.Sprintf("http://%s%s", ApiHost, workspaceUrl)
 	}
-	return fmt.Sprintf("http://%s%s%s", host, workspaceUrl, wp.Id)
+	return fmt.Sprintf("http://%s%s%s", ApiHost, workspaceUrl, wp.Id)
 }
 
 type PshdlApiFile struct {
 	Syntax string
 	Type   string
-	Record struct {
-		RelPath      string
-		FileURI      string
-		LastModified int
-	}
-	Info struct {
+	Record PshdlApiRecord
+	Info   struct {
 		Created  int
 		Problems []PshdlApiProblem
 	}
+}
+
+type PshdlApiRecord struct {
+	RelPath      string
+	FileURI      string
+	LastModified int
 }
 
 func (file PshdlApiFile) String() (str string) {
@@ -152,7 +154,7 @@ func (wp *PshdlWorkspace) Validate() error {
 		return fmt.Errorf("Workspace not Open.\n")
 	}
 
-	url := fmt.Sprintf("http://%s/api/v0.1/compiler/%s/validate", host, wp.Id)
+	url := fmt.Sprintf("http://%s/api/v0.1/compiler/%s/validate", ApiHost, wp.Id)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
@@ -181,7 +183,7 @@ func (wp *PshdlWorkspace) DownloadAllFiles() error {
 
 	for _, file := range wp.Files {
 		go func(file PshdlApiFile) {
-			url := fmt.Sprintf("http://%s%s", host, file.Record.FileURI)
+			url := fmt.Sprintf("http://%s%s", ApiHost, file.Record.FileURI)
 			req, _ := http.NewRequest("GET", url, nil)
 			req.Header.Set("Accept", "text/plain")
 			client := &http.Client{}
