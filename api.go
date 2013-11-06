@@ -179,6 +179,11 @@ func (wp *PshdlWorkspace) DownloadAllFiles() error {
 
 	done := make(chan bool)
 	fileCount := len(wp.Files)
+
+	if fileCount == 0 {
+		return nil
+	}
+
 	start := time.Now()
 
 	for _, file := range wp.Files {
