@@ -59,7 +59,7 @@ func (ev *PshdlApiCompiledVhdEvent) GetFiles() []PshdlApiRecord {
 
 func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 	// todo we need a unique client id!
-	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/1/sse", ApiHost, wp.Id)
+	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/123/sse", ApiHost, wp.Id)
 
 	sseEvent, err := goSSEClient.OpenSSEUrl(url)
 	if err != nil {
@@ -71,40 +71,38 @@ func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 
 	go func() {
 		for ev := range sseEvent {
-			// doenst work since we need to unmarshal data twice depending on MsgType..
-			// dec := json.NewDecoder(&ev.Data)
-			// err := dec.Unmarshal(&ApiEvent)
-
 			var peek struct {
 				Subject string
 				MsgType string
 			}
-			data := ev.Data.Bytes()
 
-			err := json.Unmarshal(data, &peek)
+			err := json.Unmarshal(ev.Data, &peek)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error during Peek Unmarshal:%s\n", err)
 				done <- false
 			}
 
-			var ev PshdlApiStreamingEvent
+			var apiEvent PshdlApiStreamingEvent
 
 			switch peek.Subject {
+
 			case "P:COMPILER:VHDL":
-				ev = new(PshdlApiCompiledVhdEvent)
+				apiEvent = new(PshdlApiCompiledVhdEvent)
+
 			case "P:WORKSPACE:UPDATED":
-				ev = new(PshdlApiWorskpaceUpdatedEvent)
+				apiEvent = new(PshdlApiWorskpaceUpdatedEvent)
+
 			default:
 				fmt.Fprintf(os.Stderr, "Error unhandeld event type!:%v\n", peek)
 				done <- false
 			}
 
-			err = json.Unmarshal(data, &ev)
+			err = json.Unmarshal(ev.Data, &apiEvent)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error during Event Unmarshal:%s\n", err)
 				done <- false
 			} else {
-				wp.Events <- ev
+				wp.Events <- apiEvent
 			}
 
 		}
