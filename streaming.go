@@ -3,8 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/cryptix/goSSEClient"
 )
@@ -16,7 +17,36 @@ type PshdlApiStreamingEvent interface {
 
 func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 	// todo we need a unique client id!
-	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/%d/sse", ApiHost, wp.Id, rand.Intn(128))
+	clientIdUrl := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/clientID", ApiHost, wp.Id)
+	// fmt.Printf("Debug: clientIdUrl:%s\n", clientIdUrl)
+
+	resp, err := http.Get(clientIdUrl)
+	if err != nil {
+		done <- false
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		done <- false
+		return fmt.Errorf("Error: ClientId response code: %d", resp.StatusCode)
+	}
+
+	buf := make([]byte, resp.ContentLength)
+	_, err = resp.Body.Read(buf)
+	if err != nil {
+		done <- false
+		return fmt.Errorf("Error: ClientId response could not be read: %s", err)
+	}
+
+	clientId, err := strconv.Atoi(string(buf))
+	if err != nil {
+		done <- false
+		return fmt.Errorf("Error: ClientId response could not be parsed to int: %s", err)
+	}
+
+	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/%d/sse", ApiHost, wp.Id, clientId)
+	// fmt.Printf("Debug: streamingUrl:%s\n", url)
 
 	sseEvent, err := goSSEClient.OpenSSEUrl(url)
 	if err != nil {
