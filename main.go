@@ -50,7 +50,7 @@ func main() {
 		}
 		fmt.Println("WP Open:", wp)
 
-		done := make(chan bool)
+		done := make(chan bool, 1)
 		err = wp.OpenEventStream(done)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)

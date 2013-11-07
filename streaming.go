@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/cryptix/goSSEClient"
 )
@@ -39,13 +38,7 @@ func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 		return fmt.Errorf("Error: ClientId response could not be read: %s", err)
 	}
 
-	clientId, err := strconv.Atoi(string(buf))
-	if err != nil {
-		done <- false
-		return fmt.Errorf("Error: ClientId response could not be parsed to int: %s", err)
-	}
-
-	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/%d/sse", ApiHost, wp.Id, clientId)
+	url := fmt.Sprintf("http://%s/api/v0.1/streaming/workspace/%s/%s/sse", ApiHost, wp.Id, string(buf))
 	// fmt.Printf("Debug: streamingUrl:%s\n", url)
 
 	sseEvent, err := goSSEClient.OpenSSEUrl(url)
