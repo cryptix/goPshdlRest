@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/howeyc/fsnotify"
 )
+
+var usageString = `wrong usage. available commands:
+%s open <wid> 	# opens an exisitng workspace and downloads its pshdl code
+%s new <dir>		# creates a new workspace from the specified directory
+%s stream <wid>	# streams events from an exisitng workspace
+`
 
 func main() {
 	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "usage: %s <open|new|stream> <id|path>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, usageString, os.Args[0], os.Args[0], os.Args[0])
 		os.Exit(1)
 	}
 
