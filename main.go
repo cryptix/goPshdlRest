@@ -1,122 +1,180 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"sync"
+	"text/template"
 )
 
-var usageString = `wrong usage. available commands:
-%s open <wid> 	# opens an exisitng workspace and downloads its pshdl code
-%s new <dir>		# creates a new workspace from the specified directory
-%s stream <wid>	# streams events from an exisitng workspace
-`
+// A Command is an implementation of a pshdl command
+// taken from https://code.google.com/p/go/source/browse/src/cmd/go/main.go
+type Command struct {
+	// Run runs the command.
+	// The args are the arguments after the command name.
+	Run func(cmd *Command, args []string)
+
+	// UsageLine is the one-line usage message.
+	// The first word in the line is taken to be the command name.
+	UsageLine string
+
+	// Short is the short description shown in the 'go help' output.
+	Short string
+
+	// Long is the long message shown in the 'go help <this-command>' output.
+	Long string
+
+	// Flag is a set of flags specific to this command.
+	Flag flag.FlagSet
+
+	// CustomFlags indicates that the command will do its own
+	// flag parsing.
+	CustomFlags bool
+}
+
+// Name returns the command's name: the first word in the usage line.
+func (c *Command) Name() string {
+	name := c.UsageLine
+	i := strings.Index(name, " ")
+	if i >= 0 {
+		name = name[:i]
+	}
+	return name
+}
+
+func (c *Command) Usage() {
+	fmt.Fprintf(os.Stderr, "usage: %s\n\n", c.UsageLine)
+	fmt.Fprintf(os.Stderr, "%s\n", strings.TrimSpace(c.Long))
+	os.Exit(2)
+}
+
+// Commands lists the available commands and help topics.
+// The order here is the order in which they are printed by 'go help'.
+var commands = []*Command{
+	cmdOpen,
+	cmdNew,
+	cmdStream,
+}
+
+var exitStatus = 0
+var exitMu sync.Mutex
+
+func setExitStatus(n int) {
+	exitMu.Lock()
+	if exitStatus < n {
+		exitStatus = n
+	}
+	exitMu.Unlock()
+}
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, usageString, os.Args[0], os.Args[0], os.Args[0])
-		os.Exit(1)
+	flag.Usage = usage
+	flag.Parse()
+	// log.SetFlags(0)
+
+	args := flag.Args()
+	if len(args) < 1 {
+		usage()
 	}
 
-	switch os.Args[1] {
+	if args[0] == "help" {
+		help(args[1:])
+		return
+	}
 
-	case "open":
-		wp, err := OpenWorkspace(os.Args[2])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("WP Open:", wp)
-
-		fmt.Println("Files:", wp.Files)
-		err = wp.DownloadAllFiles()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("All files Downloaded, watching..")
-		wp.watch(wp.Id)
-
-	case "new":
-		wp, err := NewWorkspace("JohnGo", "none@me.com")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("WP Created:", wp.Id)
-		wp.watch(os.Args[2])
-
-	case "stream":
-		wp, err := OpenWorkspace(os.Args[2])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("WP Open:", wp)
-
-		done := make(chan bool, 1)
-		err = wp.OpenEventStream(done)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Iterating over events...")
-		go func() {
-			for {
-				select {
-				case ev := <-wp.Events:
-					subj := ev.GetSubject()
-					switch {
-
-					case strings.HasPrefix(subj, "P:WORKSPACE:"):
-						fmt.Println("Worskpace Changed:", subj)
-						for _, file := range ev.GetFiles() {
-							fmt.Printf("[*] %s\n", file.RelPath)
-						}
-
-					case subj == "P:COMPILER:VHDL":
-						fmt.Println("New VHDL Code")
-						errc := make(chan error)
-						files := ev.GetFiles()
-						count := len(files)
-
-						if count == 0 {
-							continue
-						}
-
-						for _, file := range files {
-							fmt.Printf("[*] Downloading %s\n", file.RelPath)
-							// ugly...
-							go func(f PshdlApiRecord) {
-								f.DownloadFile(errc)
-							}(file)
-						}
-
-						for err := range errc {
-							if err != nil {
-								fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
-								break
-							} else {
-								count -= 1
-								if count == 0 {
-									fmt.Println("[*] Download finished..")
-									close(errc)
-								}
-							}
-						}
-					case subj == "P:COMPILER:C":
-						fmt.Println("New C-Sim Code")
-					}
-				}
+	for _, cmd := range commands {
+		if cmd.Name() == args[0] && cmd.Run != nil {
+			cmd.Flag.Usage = func() { cmd.Usage() }
+			if cmd.CustomFlags {
+				args = args[1:]
+			} else {
+				cmd.Flag.Parse(args[1:])
+				args = cmd.Flag.Args()
 			}
-		}()
-
-		<-done
-
-	default:
-		fmt.Fprintf(os.Stderr, "Error: Unknown command %s\n", os.Args[1])
-		os.Exit(1)
-
+			cmd.Run(cmd, args)
+			exit()
+			return
+		}
 	}
+
+	fmt.Fprintf(os.Stderr, "goPSHDLwpsync: unkown subcommand %q\nRun '%s help' for usage.\n", args[0])
+	setExitStatus(2)
+	exit()
+}
+
+var usageTemplate = `goPSHDLwpsync is a helper for interacting with the PSHDL rest API.
+
+Usage:
+	goPSHDLwpsync command [arguments]
+
+The commands are:
+{{range .}}
+	{{.Name | printf "%-11s"}} {{.Short}}{{end}}
+
+Use "goPSHDLwpsync help command" to get more information.
+`
+
+var helpTemplate = `usage: goPSHDLwpsync {{.UsageLine}}
+
+{{.Long | trim}}
+`
+
+func tmpl(w io.Writer, text string, data interface{}) {
+	t := template.New("top")
+	t.Funcs(template.FuncMap{"trim": strings.TrimSpace})
+	template.Must(t.Parse(text))
+	if err := t.Execute(w, data); err != nil {
+		panic(err)
+	}
+}
+
+func printUsage(w io.Writer) {
+	tmpl(w, usageTemplate, commands)
+}
+
+func usage() {
+	printUsage(os.Stderr)
+	os.Exit(2)
+}
+
+// help implements the 'help' command.
+func help(args []string) {
+	if len(args) == 0 {
+		printUsage(os.Stdout)
+		// not exit 2: succeeded at 'go help'.
+		return
+	}
+	if len(args) != 1 {
+		fmt.Fprintf(os.Stderr, "usage: goPSHDLwpsync help command\n\nToo many arguments given.\n")
+		os.Exit(2) // failed at 'go help'
+	}
+
+	arg := args[0]
+
+	for _, cmd := range commands {
+		if cmd.Name() == arg {
+			tmpl(os.Stdout, helpTemplate, cmd)
+			// not exit 2: succeeded at 'go help cmd'.
+			return
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.  Run 'goPSHDLwpsync help'.\n", arg)
+	os.Exit(2) // failed at 'go help cmd'
+}
+
+var atexitFuncs []func()
+
+func atexit(f func()) {
+	atexitFuncs = append(atexitFuncs, f)
+}
+
+func exit() {
+	for _, f := range atexitFuncs {
+		f()
+	}
+	os.Exit(exitStatus)
 }
