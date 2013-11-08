@@ -12,6 +12,7 @@ import (
 type PshdlApiStreamingEvent interface {
 	GetSubject() string
 	GetFiles() []PshdlApiRecord
+	DownloadFiles() error
 }
 
 func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
@@ -83,7 +84,6 @@ func (wp *PshdlWorkspace) OpenEventStream(done chan bool) error {
 
 			default:
 				fmt.Fprintf(os.Stderr, "Error unhandeld event type!:%v\n", peek)
-				done <- false
 			}
 
 			err = json.Unmarshal(ev.Data, &apiEvent)

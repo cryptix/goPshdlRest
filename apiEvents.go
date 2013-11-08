@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"os"
+)
+
 type PshdlEventMetaInfo struct {
 	Subject   string
 	MsgType   string
@@ -25,6 +30,11 @@ func (ev *PshdlApiWorskpaceUpdatedEvent) GetFiles() []PshdlApiRecord {
 	return files
 }
 
+func (ev *PshdlApiWorskpaceUpdatedEvent) DownloadFiles() error {
+	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceDeletedEvent.")
+	return nil
+}
+
 // P:WORKSPACE:DELETED
 type PshdlApiWorskpaceDeletedEvent struct {
 	PshdlEventMetaInfo
@@ -39,6 +49,11 @@ func (ev *PshdlApiWorskpaceDeletedEvent) GetFiles() []PshdlApiRecord {
 	files := make([]PshdlApiRecord, 1)
 	files[0] = ev.Contents.Record
 	return files
+}
+
+func (ev *PshdlApiWorskpaceDeletedEvent) DownloadFiles() error {
+	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceDeletedEvent.")
+	return nil
 }
 
 // P:COMPILER:VHDL
@@ -65,6 +80,10 @@ func (ev *PshdlApiCompilerVhdlEvent) GetFiles() []PshdlApiRecord {
 	return files
 }
 
+func (ev *PshdlApiCompilerVhdlEvent) DownloadFiles() error {
+	return downloadApiFiles(ev)
+}
+
 // P:COMPILER:C
 type PShdlApiCompilerCEvent struct {
 	PshdlEventMetaInfo
@@ -79,4 +98,40 @@ func (ev *PShdlApiCompilerCEvent) GetFiles() []PshdlApiRecord {
 	files := make([]PshdlApiRecord, 1)
 	files[0] = ev.Contents
 	return files
+}
+
+func (ev *PShdlApiCompilerCEvent) DownloadFiles() error {
+	return downloadApiFiles(ev)
+}
+
+func downloadApiFiles(ev PshdlApiStreamingEvent) error {
+	files := ev.GetFiles()
+
+	count := len(files)
+
+	if count == 0 {
+		fmt.Println("[*] No Files to download.")
+		return nil
+	}
+
+	errc := make(chan error)
+
+	for _, file := range files {
+		fmt.Printf("[*] Downloading %s\n", file.RelPath)
+		// ugly...
+		go func(f PshdlApiRecord) {
+			f.DownloadFile(errc)
+		}(file)
+	}
+
+	for err := range errc {
+		if err != nil {
+			return err
+		}
+		count -= 1
+		if count == 0 {
+			close(errc)
+		}
+	}
+	return nil
 }

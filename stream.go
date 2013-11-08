@@ -11,12 +11,23 @@ var cmdStream = &Command{
 	UsageLine: "stream [flags] workspaceId",
 	Short:     "hooks into server-sent events for changes to the workspace",
 	Long: `
-This automatically fetches changes to the workspace. Like new generated VHDL or Simulation code.
+This automatically fetches changes to the workspace.
+
+Use these flags to download the wanted files.
+-vhdl 	For generated VHDL
+
+-csim 	For generated C Simulation
 `,
 }
 
+var (
+	streamVHDL bool
+	streamCSim bool
+)
+
 func init() {
-	fmt.Println("TODO: Set up <stream> flags")
+	cmdStream.Flag.BoolVar(&streamVHDL, "vhdl", false, "download generated vhdl")
+	cmdStream.Flag.BoolVar(&streamCSim, "csim", false, "download generated C Simulation code")
 }
 
 func runStream(cmd *Command, args []string) {
@@ -40,53 +51,57 @@ func runStream(cmd *Command, args []string) {
 		return
 	}
 
-	fmt.Println("Iterating over events...")
-	go func() {
-		for {
-			select {
-			case ev := <-wp.Events:
+	if streamVHDL {
+		fmt.Println("Downloading generated VHDL...")
+		go func() {
+			for ev := range wp.Events {
 				subj := ev.GetSubject()
-				switch {
-
-				case strings.HasPrefix(subj, "P:WORKSPACE:"):
-					fmt.Println("Worskpace Changed:", subj)
-					for _, file := range ev.GetFiles() {
-						fmt.Printf("[*] %s\n", file.RelPath)
+				if subj == "P:COMPILER:VHDL" {
+					err := ev.DownloadFiles()
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
+						break
 					}
-
-				case subj == "P:COMPILER:VHDL":
-					fmt.Println("New VHDL Code")
-					// errc := make(chan error)
-					// files := ev.GetFiles()
-					// count := len(files)
-
-					// if count == 0 {
-					// 	continue
-					// }
-
-					// for _, file := range files {
-					// 	fmt.Printf("[*] Downloading %s\n", file.RelPath)
-					// 	// ugly...
-					// 	go func(f PshdlApiRecord) {
-					// 		f.DownloadFile(errc)
-					// 	}(file)
-					// }
-
-					// for err := range errc {
-					// 	if err != nil {
-					// 		fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
-					// 		break
-					// 	} else {
-					// 		count -= 1
-					// 		if count == 0 {
-					// 			fmt.Println("[*] Download finished..")
-					// 			close(errc)
-					// 		}
-					// 	}
-					// }
-				case subj == "P:COMPILER:C":
-					fmt.Println("New C-Sim Code")
+					fmt.Println("[*] Download finished..")
 				}
+			}
+		}()
+	}
+
+	if streamCSim {
+		fmt.Println("Downloading generated C Simulation code...")
+		go func() {
+			for ev := range wp.Events {
+				subj := ev.GetSubject()
+				if subj == "P:COMPILER:C" {
+					err := ev.DownloadFiles()
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
+						break
+					}
+					fmt.Println("[*] Download finished..")
+				}
+			}
+		}()
+	}
+
+	fmt.Println("Displaying events...")
+	go func() {
+		for ev := range wp.Events {
+			subj := ev.GetSubject()
+			switch {
+
+			case strings.HasPrefix(subj, "P:WORKSPACE:"):
+				fmt.Println("Worskpace Changed:", subj)
+				for _, file := range ev.GetFiles() {
+					fmt.Printf("[*] %s\n", file.RelPath)
+				}
+
+			case subj == "P:COMPILER:VHDL":
+				fmt.Println("New VHDL Code")
+
+			case subj == "P:COMPILER:C":
+				fmt.Println("New C-Sim Code")
 			}
 		}
 	}()
