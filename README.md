@@ -35,11 +35,10 @@ goPSHDLwpsync new <path>
 ```
 
 ### Stream
-This uses the streaming API to hook on events.
-Currently it downloads generated vhdl to the cwd once it is recompiled and notifies when pshdl code is updated.
+This uses the streaming API to hook on events. The default is just to display events. You can trigger the download of generated code with the flags __-vhdl__ and __-csim__. 
 
 ```
-goPSHDLwpsync stream <wid>
+goPSHDLwpsync stream [flags] <wid>
 ```
 
 ## TODO/Ideas
