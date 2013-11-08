@@ -31,7 +31,7 @@ func (ev *PshdlApiWorskpaceUpdatedEvent) GetFiles() []PshdlApiRecord {
 }
 
 func (ev *PshdlApiWorskpaceUpdatedEvent) DownloadFiles() error {
-	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceDeletedEvent.")
+	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceUpdatedEvent.")
 	return nil
 }
 
