@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,6 +21,10 @@ import (
 const (
 	ApiHost      = "api.pshdl.org"
 	workspaceUrl = "/api/v0.1/workspace/"
+)
+
+var (
+	wsCreatedRegex = regexp.MustCompile(`URL=/api/v0.1/workspace/([0-9A-F]*)">`)
 )
 
 // POST
@@ -260,12 +265,16 @@ func (wp *PshdlWorkspace) createWorkspace() error {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	out := string(body)
-
-	if !strings.HasPrefix(out, workspaceUrl) {
-		return fmt.Errorf("No Workspace ID - %s", out)
+	if err != nil {
+		return err
 	}
-	wp.Id = out[len(workspaceUrl):]
+
+	matches := wsCreatedRegex.FindSubmatch(body)
+	if len(matches) != 2 {
+		return fmt.Errorf("No Workspace ID - %s", string(body))
+	}
+
+	wp.Id = string(matches[1])
 	return nil
 }
 
