@@ -100,24 +100,24 @@ func main() {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "goPSHDLwpsync: unkown subcommand %q\nRun '%s help' for usage.\n", args[0])
+	fmt.Fprintf(os.Stderr, "pshdlSync: unkown subcommand %q\nRun '%s help' for usage.\n", args[0])
 	setExitStatus(2)
 	exit()
 }
 
-var usageTemplate = `goPSHDLwpsync is a helper for interacting with the PSHDL rest API.
+var usageTemplate = `pshdlSync is a helper for interacting with the PSHDL rest API.
 
 Usage:
-	goPSHDLwpsync command [arguments]
+	pshdlSync command [arguments]
 
 The commands are:
 {{range .}}
 	{{.Name | printf "%-11s"}} {{.Short}}{{end}}
 
-Use "goPSHDLwpsync help command" to get more information.
+Use "pshdlSync help command" to get more information.
 `
 
-var helpTemplate = `usage: goPSHDLwpsync {{.UsageLine}}
+var helpTemplate = `usage: pshdlSync {{.UsageLine}}
 
 {{.Long | trim}}
 `
@@ -148,7 +148,7 @@ func help(args []string) {
 		return
 	}
 	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "usage: goPSHDLwpsync help command\n\nToo many arguments given.\n")
+		fmt.Fprintf(os.Stderr, "usage: pshdlSync help command\n\nToo many arguments given.\n")
 		os.Exit(2) // failed at 'go help'
 	}
 
@@ -162,7 +162,7 @@ func help(args []string) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.  Run 'goPSHDLwpsync help'.\n", arg)
+	fmt.Fprintf(os.Stderr, "Unknown help topic %#q.  Run 'pshdlSync help'.\n", arg)
 	os.Exit(2) // failed at 'go help cmd'
 }
 
