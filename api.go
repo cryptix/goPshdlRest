@@ -254,7 +254,15 @@ func (wp *PshdlWorkspace) createWorkspace() error {
 	param.Set("name", wp.Name)
 	param.Set("eMail", wp.Email)
 
-	resp, err := http.PostForm(wp.String(), param)
+	req, err := http.NewRequest("POST", wp.String(), strings.NewReader(param.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "text/plain")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
