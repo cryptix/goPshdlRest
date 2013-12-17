@@ -51,40 +51,6 @@ func runStream(cmd *Command, args []string) {
 		return
 	}
 
-	if streamVHDL {
-		fmt.Println("Downloading generated VHDL...")
-		go func() {
-			for ev := range wp.Events {
-				subj := ev.GetSubject()
-				if subj == "P:COMPILER:VHDL" {
-					err := ev.DownloadFiles()
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
-						break
-					}
-					fmt.Println("[*] Download finished..")
-				}
-			}
-		}()
-	}
-
-	if streamCSim {
-		fmt.Println("Downloading generated C Simulation code...")
-		go func() {
-			for ev := range wp.Events {
-				subj := ev.GetSubject()
-				if subj == "P:COMPILER:C" {
-					err := ev.DownloadFiles()
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
-						break
-					}
-					fmt.Println("[*] Download finished..")
-				}
-			}
-		}()
-	}
-
 	fmt.Println("Displaying events...")
 	go func() {
 		for ev := range wp.Events {
@@ -97,11 +63,23 @@ func runStream(cmd *Command, args []string) {
 					fmt.Printf("[*] %s\n", file.RelPath)
 				}
 
-			case subj == "P:COMPILER:VHDL":
+			case subj == "P:COMPILER:VHDL" && streamVHDL:
 				fmt.Println("New VHDL Code")
+				err := ev.DownloadFiles()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
+					break
+				}
+				fmt.Println("[*] Download finished..")
 
-			case subj == "P:COMPILER:C":
+			case subj == "P:COMPILER:C" && streamCSim:
 				fmt.Println("New C-Sim Code")
+				err := ev.DownloadFiles()
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Could not load all files. %s", err)
+					break
+				}
+				fmt.Println("[*] Download finished..")
 			}
 		}
 	}()
