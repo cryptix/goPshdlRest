@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	wsCreatedRegex = regexp.MustCompile(`URL=/api/v0.1/workspace/([0-9A-F]*)">`)
+	wsCreatedRegex = regexp.MustCompile(`/api/v0.1/workspace/([0-9A-F]*)`)
 )
 
 // POST
