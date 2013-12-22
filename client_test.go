@@ -240,6 +240,7 @@ func TestDoPlain(t *testing.T) {
 		t.Errorf("Response body = %v, want %v", body, want)
 	}
 }
+
 func TestDoPlain_httpError(t *testing.T) {
 	setup()
 	defer teardown()

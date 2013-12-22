@@ -1,7 +1,9 @@
 package goPshdlRest
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 	"testing"
@@ -100,7 +102,7 @@ func TestWorkspaceService_GetInfo_Files(t *testing.T) {
 	}
 }
 
-func TestWorkspaceService_DeleteFile(t *testing.T) {
+func TestWorkspaceService_Delete(t *testing.T) {
 	setup()
 	defer teardown()
 
@@ -120,5 +122,40 @@ func TestWorkspaceService_DeleteFile(t *testing.T) {
 
 	if done == false {
 		t.Errorf("Worksace.Delete did not set done correctly")
+	}
+}
+
+func TestWorkspaceService_UploadFile(t *testing.T) {
+	setup()
+	defer teardown()
+
+	id := "1234"
+	fname := "test.pshdl"
+	content := []byte("module test {}")
+
+	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fname)
+	mux.HandleFunc(testUrl, func(w http.ResponseWriter, r *http.Request) {
+		testHeader(t, r, "Accept", "text/plain")
+		testMethod(t, r, "POST")
+
+		upload, _, err := r.FormFile("file")
+		if err != nil {
+			t.Errorf("Workspace.UploadFile request.FormFile error:", err)
+		}
+
+		var buf bytes.Buffer
+
+		io.Copy(&buf, upload)
+		if buf.String() != string(content) {
+			t.Errorf("Workspace.UploadFile upload incompleted\nGot %+v, Want: %+v\n", buf.String(), string(content))
+		}
+
+		http.Error(w, "", http.StatusOK)
+	})
+
+	inputBuf := bytes.NewReader(content)
+	err := client.Workspace.UploadFile(id, fname, inputBuf)
+	if err != nil {
+		t.Errorf("Workspace.UploadFile returned error: %v", err)
 	}
 }

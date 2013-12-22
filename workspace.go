@@ -1,7 +1,10 @@
 package goPshdlRest
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -108,4 +111,48 @@ func (s *WorkspaceService) Delete(id, fname string) (bool, *http.Response, error
 	}
 
 	return true, resp, err
+}
+
+func (s *WorkspaceService) UploadFile(id, fname string, fbuf io.Reader) error {
+
+	// convert Upload to Multipart
+	reqBody := &bytes.Buffer{}
+	writer := multipart.NewWriter(reqBody)
+
+	part, err := writer.CreateFormFile("file", fname)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(part, fbuf)
+	if err != nil {
+		return err
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return err
+	}
+
+	// prepare the requests
+	apiUri, err := url.Parse(fmt.Sprintf("workspace/%s/%s", id, fname))
+	if err != nil {
+		return err
+	}
+
+	u := s.client.BaseURL.ResolveReference(apiUri)
+	req, err := http.NewRequest("POST", u.String(), reqBody)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "text/plain")
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// do the request
+	_, _, err = s.client.DoPlain(req)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
