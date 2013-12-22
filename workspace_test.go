@@ -97,3 +97,26 @@ func TestWorkspaceService_GetInfo_Files(t *testing.T) {
 		t.Errorf("Workspace.GetInfo returned %+v, want %+v", workspace.Files, want)
 	}
 }
+
+func TestWorkspaceService_DeleteFile(t *testing.T) {
+	setup()
+	defer teardown()
+
+	id := "1234"
+	fname := "test.pshdl"
+
+	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fname)
+	mux.HandleFunc(testUrl, func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "DELETE")
+		http.Error(w, "", http.StatusOK)
+	})
+
+	done, _, err := client.Workspace.Delete(id, fname)
+	if err != nil {
+		t.Errorf("Workspace.Delete returned error: %v", err)
+	}
+
+	if done == false {
+		t.Errorf("Worksace.Delete did not set done correctly")
+	}
+}

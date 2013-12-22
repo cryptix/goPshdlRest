@@ -94,3 +94,23 @@ func (s *WorkspaceService) GetInfo(id string) (*Workspace, *http.Response, error
 
 	return w, resp, err
 }
+
+func (s *WorkspaceService) Delete(id, fname string) (bool, *http.Response, error) {
+	apiUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fname)
+
+	req, err := s.client.NewRequest("DELETE", apiUrl, nil)
+	if err != nil {
+		return false, nil, err
+	}
+
+	_, resp, err := s.client.DoPlain(req)
+	if err != nil {
+		return false, resp, err
+	}
+
+	if resp.StatusCode != 200 {
+		return false, resp, fmt.Errorf("File was not deleted.")
+	}
+
+	return true, resp, err
+}
