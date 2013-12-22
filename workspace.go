@@ -34,28 +34,17 @@ type Workspace struct {
 // Creates a new Workspace on the Rest API
 // Currently using form encoded post, want json..!
 func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
-	// todo:not using NewRequest because create dosnt support json..
-	// req, err := s.client.NewRequest("POST", "workspace", nil)
-	rel, err := url.Parse("workspace")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	u := s.client.BaseURL.ResolveReference(rel)
-
+	// prepare request
 	param := url.Values{}
 	param.Set("name", defaultName)
 	param.Set("eMail", defaultEmail)
 
-	req, err := http.NewRequest("POST", u.String(), strings.NewReader(param.Encode()))
+	req, err := s.client.NewReaderRequest("POST", "workspace", strings.NewReader(param.Encode()), "")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	// todo /\
-	//      ||
-
+	// do the request
 	body, resp, err := s.client.DoPlain(req)
 	if err != nil {
 		return nil, resp, err
@@ -113,6 +102,7 @@ func (s *WorkspaceService) Delete(id, fname string) (bool, *http.Response, error
 	return true, resp, err
 }
 
+// Uploads a file with fname to the Workspace specified by id
 func (s *WorkspaceService) UploadFile(id, fname string, fbuf io.Reader) error {
 
 	// convert Upload to Multipart
@@ -134,19 +124,11 @@ func (s *WorkspaceService) UploadFile(id, fname string, fbuf io.Reader) error {
 		return err
 	}
 
-	// prepare the requests
-	apiUri, err := url.Parse(fmt.Sprintf("workspace/%s/%s", id, fname))
+	// prepare request
+	req, err := s.client.NewReaderRequest("POST", fmt.Sprintf("workspace/%s/%s", id, fname), reqBody, writer.FormDataContentType())
 	if err != nil {
 		return err
 	}
-
-	u := s.client.BaseURL.ResolveReference(apiUri)
-	req, err := http.NewRequest("POST", u.String(), reqBody)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Accept", "text/plain")
-	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	// do the request
 	_, _, err = s.client.DoPlain(req)

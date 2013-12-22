@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -84,6 +85,29 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 
 	req.Header.Add("Accept", defaultAccept)
 	req.Header.Add("User-Agent", c.UserAgent)
+	return req, nil
+}
+
+// NewFormRequest creates an API request. Uses a io.Reader and ctype instead of marshaling json.
+func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype string) (*http.Request, error) {
+	rel, err := url.Parse(urlStr)
+	if err != nil {
+		return nil, err
+	}
+
+	u := c.BaseURL.ResolveReference(rel)
+
+	req, err := http.NewRequest(method, u.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Accept", "text/plain")
+	req.Header.Add("User-Agent", c.UserAgent)
+	req.Header.Add("Content-Type", ctype)
+	if ctype == "" {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
 	return req, nil
 }
 

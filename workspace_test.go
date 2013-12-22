@@ -68,16 +68,7 @@ func TestWorkspaceService_GetInfo_Files(t *testing.T) {
 	mux.HandleFunc("/api/v0.1/workspace/1234", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 
-		fmt.Fprint(w, `{"files":[ {
-    "record" : {
-      "fileURI" : "/api/v0.1/workspace/1234/test.pshdl",
-      "relPath" : "test.pshdl",
-      "lastModified" : 1387740467000
-    },
-    "syntax" : "unknown",
-    "type" : "pshdl",
-    "moduleInfos" : [ ]
-  }], "id":"1234", "lastValidation":0, "jsonVersion":"1.0", "validated":true}`)
+		fmt.Fprint(w, `{"files":[ { "record" : { "fileURI" : "/api/v0.1/workspace/1234/test.pshdl", "relPath" : "test.pshdl","lastModified" : 1387740467000}, "syntax" : "unknown","type" : "pshdl","moduleInfos" : [ ] }], "id":"1234", "lastValidation":0, "jsonVersion":"1.0", "validated":true}`)
 	})
 
 	workspace, _, err := client.Workspace.GetInfo("1234")
