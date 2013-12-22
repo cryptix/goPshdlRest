@@ -31,12 +31,9 @@ type Workspace struct {
 // Creates a new Workspace on the Rest API
 // Currently using form encoded post, want json..!
 func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
-
-	apiUrl := "/api/v0.1/workspace"
-	//todo
-	//  not using NewRequest because create dosnt support json..
+	// todo:not using NewRequest because create dosnt support json..
 	// req, err := s.client.NewRequest("POST", "workspace", nil)
-	rel, err := url.Parse(apiUrl)
+	rel, err := url.Parse("workspace")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -61,7 +58,7 @@ func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
 		return nil, resp, err
 	}
 
-	wsCreatedRegex := regexp.MustCompile(apiUrl + `/([0-9A-F]*)`)
+	wsCreatedRegex := regexp.MustCompile(`/api/v0.1/workspace/([0-9A-F]*)`)
 	matches := wsCreatedRegex.FindSubmatch(body)
 	if len(matches) != 2 {
 		return nil, resp, fmt.Errorf("No Workspace ID - %s", string(body))
@@ -74,10 +71,9 @@ func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
 	return w, resp, nil
 }
 
+// GetInfo gets all the info there is to get for a PSHDL Workspace
 func (s *WorkspaceService) GetInfo(id string) (*Workspace, *http.Response, error) {
-	apiUrl := fmt.Sprintf("/api/v0.1/workspace/%s", id)
-
-	req, err := s.client.NewRequest("GET", apiUrl, nil)
+	req, err := s.client.NewRequest("GET", "workspace/"+id, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,10 +91,9 @@ func (s *WorkspaceService) GetInfo(id string) (*Workspace, *http.Response, error
 	return w, resp, err
 }
 
+// Delete's the file `fname` from the specified workspace
 func (s *WorkspaceService) Delete(id, fname string) (bool, *http.Response, error) {
-	apiUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fname)
-
-	req, err := s.client.NewRequest("DELETE", apiUrl, nil)
+	req, err := s.client.NewRequest("DELETE", fmt.Sprintf("workspace/%s/%s", id, fname), nil)
 	if err != nil {
 		return false, nil, err
 	}

@@ -11,45 +11,48 @@ import (
 
 const (
 	libraryVersion = "0.1"
-	defaultBaseURL = "http://api.pshdl.org/api/v0.1"
+	defaultBaseURL = "http://api.pshdl.org/api/v0.1/"
 	userAgent      = "goPshdlRest/" + libraryVersion
 
 	defaultAccept    = "application/json"
 	defaultMediaType = "application/octet-stream"
 )
 
-// A Client manages communication with the GitHub API.
+// A Client manages communication with the Pshdl Rest API.
 type Client struct {
 	// HTTP client used to communicate with the API.
 	client *http.Client
 
-	// Base URL for API requests.  Defaults to the public GitHub API, but can be
-	// set to a domain endpoint to use with GitHub Enterprise.  BaseURL should
-	// always be specified with a trailing slash.
+	// Base URL for API requests.  BaseURL should always be specified with a trailing slash.
 	BaseURL *url.URL
 
-	// User agent used when communicating with the GitHub API.
+	// User agent used when communicating with the PSHDL REST API.
 	UserAgent string
 
-	// Services used for talking to different parts of the GitHub API.
+	// Services used for talking to different parts of the PSHDL REST API.
 	Workspace *WorkspaceService
-	Compiler  *CompilerService
+
+	// not yet implemented
+	// Compiler *CompilerService
+	// Streaming  *StreamingService
 }
 
-// NewClient returns a new GitHub API client.  If a nil httpClient is
-// provided, http.DefaultClient will be used.  To use API methods which require
-// authentication, provide an http.Client that will perform the authentication
-// for you (such as that provided by the goauth2 library).
+// NewClient returns a new PSHDL REST API client.  If a nil httpClient is
+// provided, http.DefaultClient will be used.
 func NewClient(httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	baseUrl, _ := url.Parse(defaultBaseURL)
+	baseUrl, err := url.Parse(defaultBaseURL)
+	if err != nil {
+		panic(err)
+	}
 
 	c := &Client{client: httpClient, BaseURL: baseUrl, UserAgent: userAgent}
-	// not yet implemented
 	c.Workspace = &WorkspaceService{client: c}
+	// not yet implemented
 	// c.Compiler = &CompilerService{client: c}
+	// c.Streaming = &CompilerService{client: c}
 	return c
 }
 
@@ -108,7 +111,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	return resp, err
 }
 
-// Do sends an API request and returns the API response.
+// Do sends an API request and returns the API response as a slice of bytes.
 func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
 	req.Header.Set("Accept", "text/plain")
 
@@ -133,7 +136,7 @@ func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
 /*
 An ErrorResponse reports one or more errors caused by an API request.
 
-GitHub API docs: http://developer.github.com/v3/#client-errors
+PSHDL REST API docs: http://developer.github.com/v3/#client-errors
 */
 type ErrorResponse struct {
 	Response *http.Response // HTTP response that caused this error

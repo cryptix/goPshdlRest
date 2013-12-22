@@ -18,7 +18,7 @@ func TestWorkspaceService_Create(t *testing.T) {
 		})
 		testMethod(t, r, "POST")
 
-		fmt.Fprint(w, `/api/v0.1/workspace/251C5321A7254D79`)
+		fmt.Fprint(w, "/api/v0.1/workspace/251C5321A7254D79")
 	})
 
 	workspace, _, err := client.Workspace.Create()

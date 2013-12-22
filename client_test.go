@@ -33,7 +33,7 @@ func setup() {
 
 	// github client configured to use test server
 	client = NewClient(nil)
-	url, _ := url.Parse(server.URL)
+	url, _ := url.Parse(server.URL + "/api/v0.1/")
 	client.BaseURL = url
 }
 
@@ -134,7 +134,7 @@ func TestNewRequest(t *testing.T) {
 		Name, Email string
 	}
 
-	inURL, outURL := "/api/v0.1/foo", defaultBaseURL+"/foo"
+	inURL, outURL := "foo", defaultBaseURL+"foo"
 	inBody, outBody := &createPut{Name: "l", Email: "hi@me.com"}, `{"Name":"l","Email":"hi@me.com"}`+"\n"
 	req, _ := c.NewRequest("PUT", inURL, inBody)
 
