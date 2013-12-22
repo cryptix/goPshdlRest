@@ -138,3 +138,17 @@ func (s *WorkspaceService) UploadFile(id, fname string, fbuf io.Reader) error {
 
 	return nil
 }
+
+func (s *WorkspaceService) DownloadFile(id, fname string) ([]byte, error) {
+	req, err := s.client.NewRequest("GET", fmt.Sprintf("workspace/%s/%s", id, fname), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	body, _, err := s.client.DoPlain(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
+}

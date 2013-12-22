@@ -150,3 +150,29 @@ func TestWorkspaceService_UploadFile(t *testing.T) {
 		t.Errorf("Workspace.UploadFile returned error: %v", err)
 	}
 }
+
+func TestWorkspaceService_DownloadFile(t *testing.T) {
+	setup()
+	defer teardown()
+
+	id := "1234"
+	fName := "test.pshdl"
+	fContent := "module test {}"
+
+	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fName)
+	mux.HandleFunc(testUrl, func(w http.ResponseWriter, r *http.Request) {
+		testHeader(t, r, "Accept", "text/plain")
+		testMethod(t, r, "GET")
+
+		fmt.Fprintf(w, fContent)
+	})
+
+	fResponse, err := client.Workspace.DownloadFile(id, fName)
+	if err != nil {
+		t.Errorf("Workspace.DownloadFile returned error: %v", err)
+	}
+
+	if string(fResponse) != fContent {
+		t.Errorf("Workspace.DownloadFile incorrect file Download.\nResponse:%s\nWanted:%s\n", string(fResponse), fContent)
+	}
+}
