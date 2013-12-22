@@ -39,7 +39,7 @@ func TestWorkspaceService_GetInfo(t *testing.T) {
 	mux.HandleFunc("/api/v0.1/workspace/1234", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 
-		fmt.Fprint(w, `{"files":[ ], "id":"1234", "lastValidation":0, "jsonVersion":"1.0", "validated":true}`)
+		fmt.Fprint(w, `{"files":[ ], "id":"1234", "lastValidation":10, "jsonVersion":"9.9", "validated":true}`)
 	})
 
 	workspace, _, err := client.Workspace.GetInfo("1234")
@@ -47,13 +47,15 @@ func TestWorkspaceService_GetInfo(t *testing.T) {
 		t.Errorf("Workspace.GetInfo returned error: %v", err)
 	}
 
-	want := Workspace{
-		Id:          "1234",
-		JsonVersion: "1.0",
-		Validated:   true,
+	want := &Workspace{
+		Id:             "1234",
+		JsonVersion:    "9.9",
+		LastValidation: 10,
+		Validated:      true,
+		Files:          []File{},
 	}
 	if !reflect.DeepEqual(workspace, want) {
-		t.Errorf("Workspace.GetInfo returned %+v, want %+v", workspace, want)
+		t.Errorf("Workspace.GetInfo returned %#v, want %#v", workspace, want)
 	}
 }
 
