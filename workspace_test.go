@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -97,16 +98,16 @@ func TestWorkspaceService_Delete(t *testing.T) {
 	setup()
 	defer teardown()
 
-	id := "1234"
+	client.Workspace.Id = "1234"
 	fname := "test.pshdl"
 
-	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fname)
+	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", client.Workspace.Id, fname)
 	mux.HandleFunc(testUrl, func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
 		http.Error(w, "", http.StatusOK)
 	})
 
-	done, _, err := client.Workspace.Delete(id, fname)
+	done, _, err := client.Workspace.Delete(fname)
 	if err != nil {
 		t.Errorf("Workspace.Delete returned error: %v", err)
 	}
@@ -116,22 +117,36 @@ func TestWorkspaceService_Delete(t *testing.T) {
 	}
 }
 
+func TestWorkspaceService_Delete_NoId(t *testing.T) {
+	setup()
+	defer teardown()
+
+	_, _, err := client.Workspace.Delete("hansfranz.pshdl")
+	if err == nil {
+		t.Errorf("Workspace.Delete didn't return an error!")
+	}
+}
+
 func TestWorkspaceService_UploadFile(t *testing.T) {
 	setup()
 	defer teardown()
 
-	id := "1234"
+	client.Workspace.Id = "1234"
 	fname := "test.pshdl"
 	content := []byte("module test {}")
 
-	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fname)
+	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s", client.Workspace.Id)
 	mux.HandleFunc(testUrl, func(w http.ResponseWriter, r *http.Request) {
 		testHeader(t, r, "Accept", "text/plain")
 		testMethod(t, r, "POST")
 
+		if !strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+			t.Errorf("Workspace.UploadFile wrong Content-Type:", r.Header.Get("Content-Type"))
+		}
+
 		upload, _, err := r.FormFile("file")
 		if err != nil {
-			t.Errorf("Workspace.UploadFile request.FormFile error:", err)
+			t.Errorf("Workspace.UploadFile request.FormFile error: %s", err)
 		}
 
 		var buf bytes.Buffer
@@ -144,10 +159,19 @@ func TestWorkspaceService_UploadFile(t *testing.T) {
 		http.Error(w, "", http.StatusOK)
 	})
 
-	inputBuf := bytes.NewReader(content)
-	err := client.Workspace.UploadFile(id, fname, inputBuf)
+	err := client.Workspace.UploadFile(fname, bytes.NewReader(content))
 	if err != nil {
 		t.Errorf("Workspace.UploadFile returned error: %v", err)
+	}
+}
+
+func TestWorkspaceService_UploadFile_NoId(t *testing.T) {
+	setup()
+	defer teardown()
+
+	err := client.Workspace.UploadFile("hansfranz.pshdl", bytes.NewReader([]byte("")))
+	if err == nil {
+		t.Errorf("Workspace.UploadFile didn't return an error!")
 	}
 }
 
@@ -155,11 +179,11 @@ func TestWorkspaceService_DownloadFile(t *testing.T) {
 	setup()
 	defer teardown()
 
-	id := "1234"
+	client.Workspace.Id = "1234"
 	fName := "test.pshdl"
 	fContent := "module test {}"
 
-	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", id, fName)
+	testUrl := fmt.Sprintf("/api/v0.1/workspace/%s/%s", client.Workspace.Id, fName)
 	mux.HandleFunc(testUrl, func(w http.ResponseWriter, r *http.Request) {
 		testHeader(t, r, "Accept", "text/plain")
 		testMethod(t, r, "GET")
@@ -167,12 +191,22 @@ func TestWorkspaceService_DownloadFile(t *testing.T) {
 		fmt.Fprintf(w, fContent)
 	})
 
-	fResponse, err := client.Workspace.DownloadFile(id, fName)
+	fResponse, err := client.Workspace.DownloadFile(fName)
 	if err != nil {
 		t.Errorf("Workspace.DownloadFile returned error: %v", err)
 	}
 
 	if string(fResponse) != fContent {
 		t.Errorf("Workspace.DownloadFile incorrect file Download.\nResponse:%s\nWanted:%s\n", string(fResponse), fContent)
+	}
+}
+
+func TestWorkspaceService_DownloadFile_NoId(t *testing.T) {
+	setup()
+	defer teardown()
+
+	_, err := client.Workspace.DownloadFile("hansfranz.pshdl")
+	if err == nil {
+		t.Errorf("Workspace.DownloadFile didn't return an error!")
 	}
 }

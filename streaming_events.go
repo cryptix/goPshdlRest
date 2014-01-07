@@ -5,12 +5,6 @@ import (
 	"os"
 )
 
-type PshdlApiStreamingEvent interface {
-	GetSubject() string
-	GetFiles() []Record
-	DownloadFiles() error
-}
-
 type PshdlEventMetaInfo struct {
 	Subject   string
 	MsgType   string
@@ -19,16 +13,16 @@ type PshdlEventMetaInfo struct {
 
 // P:WORKSPACE:ADDED
 // P:WORKSPACE:UPDATED
-type PshdlApiWorskpaceUpdatedEvent struct {
+type WorskpaceUpdatedEvent struct {
 	PshdlEventMetaInfo
 	Contents []File
 }
 
-func (ev *PshdlApiWorskpaceUpdatedEvent) GetSubject() string {
+func (ev *WorskpaceUpdatedEvent) GetSubject() string {
 	return ev.Subject
 }
 
-func (ev *PshdlApiWorskpaceUpdatedEvent) GetFiles() []Record {
+func (ev *WorskpaceUpdatedEvent) GetFiles() []Record {
 	files := make([]Record, len(ev.Contents))
 	for i, f := range ev.Contents {
 		files[i] = f.Record
@@ -36,34 +30,34 @@ func (ev *PshdlApiWorskpaceUpdatedEvent) GetFiles() []Record {
 	return files
 }
 
-func (ev *PshdlApiWorskpaceUpdatedEvent) DownloadFiles() error {
+func (ev *WorskpaceUpdatedEvent) DownloadFiles() error {
 	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceUpdatedEvent.")
 	return nil
 }
 
 // P:WORKSPACE:DELETED
-type PshdlApiWorskpaceDeletedEvent struct {
+type WorskpaceDeletedEvent struct {
 	PshdlEventMetaInfo
 	Contents File
 }
 
-func (ev *PshdlApiWorskpaceDeletedEvent) GetSubject() string {
+func (ev *WorskpaceDeletedEvent) GetSubject() string {
 	return ev.Subject
 }
 
-func (ev *PshdlApiWorskpaceDeletedEvent) GetFiles() []Record {
+func (ev *WorskpaceDeletedEvent) GetFiles() []Record {
 	files := make([]Record, 1)
 	files[0] = ev.Contents.Record
 	return files
 }
 
-func (ev *PshdlApiWorskpaceDeletedEvent) DownloadFiles() error {
+func (ev *WorskpaceDeletedEvent) DownloadFiles() error {
 	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceDeletedEvent.")
 	return nil
 }
 
 // P:COMPILER:VHDL
-type PshdlApiCompilerVhdlEvent struct {
+type CompilerVhdlEvent struct {
 	PshdlEventMetaInfo
 	Contents []struct {
 		Created  int
@@ -72,11 +66,11 @@ type PshdlApiCompilerVhdlEvent struct {
 	}
 }
 
-func (ev *PshdlApiCompilerVhdlEvent) GetSubject() string {
+func (ev *CompilerVhdlEvent) GetSubject() string {
 	return ev.Subject
 }
 
-func (ev *PshdlApiCompilerVhdlEvent) GetFiles() []Record {
+func (ev *CompilerVhdlEvent) GetFiles() []Record {
 	files := make([]Record, len(ev.Contents))
 	for i, f := range ev.Contents {
 		if len(f.Files) == 1 {
@@ -86,31 +80,31 @@ func (ev *PshdlApiCompilerVhdlEvent) GetFiles() []Record {
 	return files
 }
 
-func (ev *PshdlApiCompilerVhdlEvent) DownloadFiles() error {
+func (ev *CompilerVhdlEvent) DownloadFiles() error {
 	return downloadApiFiles(ev)
 }
 
 // P:COMPILER:C
-type PShdlApiCompilerCEvent struct {
+type CompilerCEvent struct {
 	PshdlEventMetaInfo
 	Contents Record
 }
 
-func (ev *PShdlApiCompilerCEvent) GetSubject() string {
+func (ev *CompilerCEvent) GetSubject() string {
 	return ev.Subject
 }
 
-func (ev *PShdlApiCompilerCEvent) GetFiles() []Record {
+func (ev *CompilerCEvent) GetFiles() []Record {
 	files := make([]Record, 1)
 	files[0] = ev.Contents
 	return files
 }
 
-func (ev *PShdlApiCompilerCEvent) DownloadFiles() error {
+func (ev *CompilerCEvent) DownloadFiles() error {
 	return downloadApiFiles(ev)
 }
 
-func downloadApiFiles(ev PshdlApiStreamingEvent) error {
+func downloadApiFiles(ev StreamingEvent) error {
 	files := ev.GetFiles()
 
 	count := len(files)

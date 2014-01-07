@@ -104,7 +104,7 @@ func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype s
 
 	req.Header.Add("Accept", "text/plain")
 	req.Header.Add("User-Agent", c.UserAgent)
-	req.Header.Add("Content-Type", ctype)
+	req.Header.Set("Content-Type", ctype)
 	if ctype == "" {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
@@ -154,6 +154,7 @@ func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
 	return data, resp, err
 }
 

@@ -88,8 +88,12 @@ func (s *WorkspaceService) GetInfo() (*Workspace, *http.Response, error) {
 }
 
 // Delete's the file `fname` from the specified workspace
-func (s *WorkspaceService) Delete(id, fname string) (bool, *http.Response, error) {
-	req, err := s.client.NewRequest("DELETE", fmt.Sprintf("workspace/%s/%s", id, fname), nil)
+func (s *WorkspaceService) Delete(fname string) (bool, *http.Response, error) {
+	if s.Id == "" {
+		return false, nil, fmt.Errorf("Workspace ID not set!")
+	}
+
+	req, err := s.client.NewRequest("DELETE", fmt.Sprintf("workspace/%s/%s", s.Id, fname), nil)
 	if err != nil {
 		return false, nil, err
 	}
@@ -107,7 +111,10 @@ func (s *WorkspaceService) Delete(id, fname string) (bool, *http.Response, error
 }
 
 // Uploads a file with fname to the Workspace specified by id
-func (s *WorkspaceService) UploadFile(id, fname string, fbuf io.Reader) error {
+func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
+	if s.Id == "" {
+		return fmt.Errorf("Workspace ID not set!")
+	}
 
 	// convert Upload to Multipart
 	reqBody := &bytes.Buffer{}
@@ -129,7 +136,7 @@ func (s *WorkspaceService) UploadFile(id, fname string, fbuf io.Reader) error {
 	}
 
 	// prepare request
-	req, err := s.client.NewReaderRequest("POST", fmt.Sprintf("workspace/%s/%s", id, fname), reqBody, writer.FormDataContentType())
+	req, err := s.client.NewReaderRequest("POST", fmt.Sprintf("workspace/%s", s.Id), reqBody, writer.FormDataContentType())
 	if err != nil {
 		return err
 	}
@@ -143,8 +150,12 @@ func (s *WorkspaceService) UploadFile(id, fname string, fbuf io.Reader) error {
 	return nil
 }
 
-func (s *WorkspaceService) DownloadFile(id, fname string) ([]byte, error) {
-	req, err := s.client.NewRequest("GET", fmt.Sprintf("workspace/%s/%s", id, fname), nil)
+func (s *WorkspaceService) DownloadFile(fname string) ([]byte, error) {
+	if s.Id == "" {
+		return nil, fmt.Errorf("Workspace ID not set!")
+	}
+
+	req, err := s.client.NewRequest("GET", fmt.Sprintf("workspace/%s/%s", s.Id, fname), nil)
 	if err != nil {
 		return nil, err
 	}
