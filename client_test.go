@@ -35,6 +35,7 @@ func setup() {
 	client = NewClient(nil)
 	url, _ := url.Parse(server.URL + "/api/v0.1/")
 	client.BaseURL = url
+	client.Workspace.Id = "1234"
 }
 
 // teardown closes the test HTTP server.

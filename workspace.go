@@ -19,7 +19,10 @@ const (
 // WorkspaceService handles communication with the workspace related
 // methods of the PsHdl REST API.
 type WorkspaceService struct {
+	// wrapped http client
 	client *Client
+	// current workspace Id
+	Id string
 }
 
 // Workspace represents a workspace on the API
@@ -56,16 +59,17 @@ func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
 		return nil, resp, fmt.Errorf("No Workspace ID - %s", string(body))
 	}
 
+	s.Id = string(matches[1])
 	w := &Workspace{
-		Id: string(matches[1]),
+		Id: s.Id,
 	}
 
 	return w, resp, nil
 }
 
 // GetInfo gets all the info there is to get for a PSHDL Workspace
-func (s *WorkspaceService) GetInfo(id string) (*Workspace, *http.Response, error) {
-	req, err := s.client.NewRequest("GET", "workspace/"+id, nil)
+func (s *WorkspaceService) GetInfo() (*Workspace, *http.Response, error) {
+	req, err := s.client.NewRequest("GET", "workspace/"+s.Id, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -76,7 +80,7 @@ func (s *WorkspaceService) GetInfo(id string) (*Workspace, *http.Response, error
 		return nil, resp, err
 	}
 
-	if w.Id != id {
+	if w.Id != s.Id {
 		return nil, nil, fmt.Errorf("We got response for a different workspace!!", w)
 	}
 

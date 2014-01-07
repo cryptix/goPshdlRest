@@ -44,7 +44,7 @@ func TestWorkspaceService_GetInfo(t *testing.T) {
 		fmt.Fprint(w, `{"files":[ ], "id":"1234", "lastValidation":10, "jsonVersion":"9.9", "validated":true}`)
 	})
 
-	workspace, _, err := client.Workspace.GetInfo("1234")
+	workspace, _, err := client.Workspace.GetInfo()
 	if err != nil {
 		t.Errorf("Workspace.GetInfo returned error: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestWorkspaceService_GetInfo_Files(t *testing.T) {
 		fmt.Fprint(w, `{"files":[ { "record" : { "fileURI" : "/api/v0.1/workspace/1234/test.pshdl", "relPath" : "test.pshdl","lastModified" : 1387740467000}, "syntax" : "unknown","type" : "pshdl","moduleInfos" : [ ] }], "id":"1234", "lastValidation":0, "jsonVersion":"1.0", "validated":true}`)
 	})
 
-	workspace, _, err := client.Workspace.GetInfo("1234")
+	workspace, _, err := client.Workspace.GetInfo()
 	if err != nil {
 		t.Errorf("Workspace.GetInfo returned error: %v", err)
 	}
