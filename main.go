@@ -56,7 +56,6 @@ func (c *Command) Usage() {
 var commands = []*Command{
 	cmdOpen,
 	cmdNew,
-	cmdStream,
 }
 
 var exitStatus = 0
