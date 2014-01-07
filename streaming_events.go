@@ -5,6 +5,12 @@ import (
 	"os"
 )
 
+type PshdlApiStreamingEvent interface {
+	GetSubject() string
+	GetFiles() []Record
+	DownloadFiles() error
+}
+
 type PshdlEventMetaInfo struct {
 	Subject   string
 	MsgType   string
@@ -120,7 +126,8 @@ func downloadApiFiles(ev PshdlApiStreamingEvent) error {
 		fmt.Printf("[*] Downloading %s\n", file.RelPath)
 		// ugly...
 		go func(f Record) {
-			f.DownloadFile(errc)
+			// f.DownloadFile(errc)
+			fmt.Println("Download files TODO")
 		}(file)
 	}
 
