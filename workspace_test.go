@@ -148,13 +148,12 @@ func TestWorkspaceService(t *testing.T) {
 				fmt.Fprintf(w, fContent)
 			})
 
-			fResponse, err := client.Workspace.DownloadFile(fName)
+			err := client.Workspace.DownloadFile(fName)
 			So(err, ShouldBeNil)
-			So(string(fResponse), ShouldEqual, fContent)
 		})
 
 		Convey("DownloadFile() without an ID", func() {
-			_, err := client.Workspace.DownloadFile("hansfranz.pshdl")
+			err := client.Workspace.DownloadFile("hansfranz.pshdl")
 			So(err, ShouldNotBeNil)
 		})
 

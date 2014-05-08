@@ -7,8 +7,11 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -150,21 +153,89 @@ func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
 	return nil
 }
 
+func (s *WorkspaceService) DownloadAllFiles() error {
+	wp, _, err := s.GetInfo()
+	if err != nil {
+		return fmt.Errorf("s.GetInfo() Error: %s", err)
+	}
+
+	errc := make(chan error)
+	fileCount := len(wp.Files)
+
+	if fileCount == 0 {
+		return nil
+	}
+
+	start := time.Now()
+
+	for _, f := range wp.Files {
+		go func(f File) {
+			err := s.DownloadFile(f.Record.RelPath)
+			if err != nil {
+				errc <- err //fmt.Fprintf(os.Stderr, "Could not http.Get %s - %s\n", file.Record.RelPath, err)
+				return
+			}
+			errc <- nil
+		}(f)
+	}
+
+	for {
+		select {
+		case err := <-errc:
+			if err != nil {
+				close(errc)
+				return fmt.Errorf("could not load all files. Error: %s", err)
+			}
+
+			fileCount--
+			if fileCount == 0 {
+				return nil
+			}
+
+		case <-time.After(5 * time.Second):
+			fmt.Fprintf(os.Stderr, "DownloadAllFiles() Waiting.. \n%d files left. Duration: %s\n", fileCount, time.Since(start))
+		}
+	}
+}
+
 // DownloadFile returns a copy of fname
-func (s *WorkspaceService) DownloadFile(fname string) ([]byte, error) {
+func (s *WorkspaceService) DownloadFile(fname string) error {
 	if s.ID == "" {
-		return nil, fmt.Errorf("workspace ID not set")
+		return fmt.Errorf("workspace ID not set")
 	}
 
 	req, err := s.client.NewRequest("GET", fmt.Sprintf("workspace/%s/%s", s.ID, fname), nil)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("client.NewRequest() error: %s", err)
 	}
 
-	body, _, err := s.client.DoPlain(req)
+	req.Header.Set("Accept", "text/plain")
+
+	resp, err := s.client.Do(req, nil)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("client.Do(req) error: %s", err)
+	}
+	defer resp.Body.Close()
+
+	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0700)
+	if err != nil {
+		return fmt.Errorf("os.OpenFile() error: %s", err)
+	}
+	defer f.Close()
+
+	copied, err := io.Copy(f, resp.Body)
+	if err != nil {
+		return err
 	}
 
-	return body, nil
+	fileLength, err := strconv.Atoi(resp.Header.Get("Content-Length"))
+	if err != nil {
+		return err
+	}
+
+	if int(copied) != fileLength {
+		return fmt.Errorf(" io.Copy(f, resp.Body) did not copy the whole file. got <%d> wanted <%d>", copied, fileLength)
+	}
+
+	return nil
 }
