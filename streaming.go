@@ -15,7 +15,7 @@ type StreamingService struct {
 	// wrapped http client
 	client *Client
 	// current workspace Id
-	Id string
+	ID string
 }
 
 type StreamingEvent interface {
@@ -25,7 +25,7 @@ type StreamingEvent interface {
 }
 
 func (s *StreamingService) OpenEventStream() (*http.Response, error) {
-	req, err := s.client.NewRequest("GET", "streaming/workspace/"+s.Id+"/clientID", nil)
+	req, err := s.client.NewRequest("GET", "streaming/workspace/"+s.ID+"/clientID", nil)
 	if err != nil {
 		return nil, err
 	}

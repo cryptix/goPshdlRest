@@ -34,8 +34,8 @@ func setup() {
 	// github client configured to use test server
 	client = NewClient(nil)
 	url, _ := url.Parse(server.URL + "/api/v0.1/")
-	client.BaseURL = url
-	client.Workspace.Id = "1234"
+	client.baseURL = url
+	client.Workspace.ID = "1234"
 	client.Compiler.ID = "1234"
 }
 
@@ -50,7 +50,7 @@ func TestNewClient(t *testing.T) {
 		c = NewClient(nil)
 
 		Convey("It should have the correct BaseURL", func() {
-			So(c.BaseURL.String(), ShouldEqual, defaultBaseURL)
+			So(c.baseURL.String(), ShouldEqual, defaultBaseURL)
 		})
 
 		Convey("It should have the correct UserAgent", func() {

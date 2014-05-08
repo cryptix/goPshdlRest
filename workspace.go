@@ -21,20 +21,20 @@ const (
 type WorkspaceService struct {
 	// wrapped http client
 	client *Client
-	// current workspace Id
-	Id string
+	// current workspace ID
+	ID string
 }
 
 // Workspace represents a workspace on the API
 type Workspace struct {
-	Id             string
+	ID             string
 	Files          []File
-	LastValidation int
-	Validated      bool
-	JsonVersion    string
+	LastValIDation int
+	ValIDated      bool
+	JSONVersion    string `json:"JsonVersion"`
 }
 
-// Creates a new Workspace on the Rest API
+// Create creates a new Workspace on the Rest API
 // Currently using form encoded post, want json..!
 func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
 	// prepare request
@@ -56,12 +56,12 @@ func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
 	wsCreatedRegex := regexp.MustCompile(`/api/v0.1/workspace/([0-9A-F]*)`)
 	matches := wsCreatedRegex.FindSubmatch(body)
 	if len(matches) != 2 {
-		return nil, resp, fmt.Errorf("No Workspace ID - %s", string(body))
+		return nil, resp, fmt.Errorf("no Workspace ID - %s", string(body))
 	}
 
-	s.Id = string(matches[1])
+	s.ID = string(matches[1])
 	w := &Workspace{
-		Id: s.Id,
+		ID: s.ID,
 	}
 
 	return w, resp, nil
@@ -69,7 +69,7 @@ func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
 
 // GetInfo gets all the info there is to get for a PSHDL Workspace
 func (s *WorkspaceService) GetInfo() (*Workspace, *http.Response, error) {
-	req, err := s.client.NewRequest("GET", "workspace/"+s.Id, nil)
+	req, err := s.client.NewRequest("GET", "workspace/"+s.ID, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -80,20 +80,20 @@ func (s *WorkspaceService) GetInfo() (*Workspace, *http.Response, error) {
 		return nil, resp, err
 	}
 
-	if w.Id != s.Id {
-		return nil, nil, fmt.Errorf("We got response for a different workspace!!", w)
+	if w.ID != s.ID {
+		return nil, nil, fmt.Errorf("we got response for %v a different workspace", w)
 	}
 
 	return w, resp, err
 }
 
-// Delete's the file `fname` from the specified workspace
+// Delete removes the file `fname` from the specified workspace
 func (s *WorkspaceService) Delete(fname string) (bool, *http.Response, error) {
-	if s.Id == "" {
-		return false, nil, fmt.Errorf("Workspace ID not set!")
+	if s.ID == "" {
+		return false, nil, fmt.Errorf("workspace ID not set")
 	}
 
-	req, err := s.client.NewRequest("DELETE", fmt.Sprintf("workspace/%s/%s", s.Id, fname), nil)
+	req, err := s.client.NewRequest("DELETE", fmt.Sprintf("workspace/%s/%s", s.ID, fname), nil)
 	if err != nil {
 		return false, nil, err
 	}
@@ -104,16 +104,16 @@ func (s *WorkspaceService) Delete(fname string) (bool, *http.Response, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return false, resp, fmt.Errorf("File was not deleted.")
+		return false, resp, fmt.Errorf("file was not deleted")
 	}
 
 	return true, resp, err
 }
 
-// Uploads a file with fname to the Workspace specified by id
+// UploadFile adds a file with fname to the Workspace specified by ID
 func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
-	if s.Id == "" {
-		return fmt.Errorf("Workspace ID not set!")
+	if s.ID == "" {
+		return fmt.Errorf("workspace ID not set")
 	}
 
 	// convert Upload to Multipart
@@ -136,7 +136,7 @@ func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
 	}
 
 	// prepare request
-	req, err := s.client.NewReaderRequest("POST", fmt.Sprintf("workspace/%s", s.Id), reqBody, writer.FormDataContentType())
+	req, err := s.client.NewReaderRequest("POST", fmt.Sprintf("workspace/%s", s.ID), reqBody, writer.FormDataContentType())
 	if err != nil {
 		return err
 	}
@@ -150,12 +150,13 @@ func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
 	return nil
 }
 
+// DownloadFile returns a copy of fname
 func (s *WorkspaceService) DownloadFile(fname string) ([]byte, error) {
-	if s.Id == "" {
-		return nil, fmt.Errorf("Workspace ID not set!")
+	if s.ID == "" {
+		return nil, fmt.Errorf("workspace ID not set")
 	}
 
-	req, err := s.client.NewRequest("GET", fmt.Sprintf("workspace/%s/%s", s.Id, fname), nil)
+	req, err := s.client.NewRequest("GET", fmt.Sprintf("workspace/%s/%s", s.ID, fname), nil)
 	if err != nil {
 		return nil, err
 	}

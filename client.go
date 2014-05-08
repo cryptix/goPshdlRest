@@ -24,8 +24,8 @@ type Client struct {
 	// HTTP client used to communicate with the API.
 	client *http.Client
 
-	// Base URL for API requests.  BaseURL should always be specified with a trailing slash.
-	BaseURL *url.URL
+	// Base URL for API requests.  baseURL should always be specified with a trailing slash.
+	baseURL *url.URL
 
 	// User agent used when communicating with the PSHDL REST API.
 	UserAgent string
@@ -44,12 +44,12 @@ func NewClient(httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	baseUrl, err := url.Parse(defaultBaseURL)
+	baseURL, err := url.Parse(defaultBaseURL)
 	if err != nil {
 		panic(err)
 	}
 
-	c := &Client{client: httpClient, BaseURL: baseUrl, UserAgent: userAgent}
+	c := &Client{client: httpClient, baseURL: baseURL, UserAgent: userAgent}
 	c.Workspace = &WorkspaceService{client: c}
 	c.Compiler = &CompilerService{client: c}
 	// not yet implemented
@@ -58,7 +58,7 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 // NewRequest creates an API request. A relative URL can be provided in urlStr,
-// in which case it is resolved relative to the BaseURL of the Client.
+// in which case it is resolved relative to the baseURL of the Client.
 // Relative URLs should always be specified without a preceding slash.  If
 // specified, the value pointed to by body is JSON encoded and included as the
 // request body.
@@ -68,7 +68,7 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 		return nil, err
 	}
 
-	u := c.BaseURL.ResolveReference(rel)
+	u := c.baseURL.ResolveReference(rel)
 
 	buf := new(bytes.Buffer)
 	if body != nil {
@@ -88,14 +88,14 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 	return req, nil
 }
 
-// NewFormRequest creates an API request. Uses a io.Reader and ctype instead of marshaling json.
+// NewReaderRequest creates an API request. Uses a io.Reader and ctype instead of marshaling json.
 func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype string) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
 
-	u := c.BaseURL.ResolveReference(rel)
+	u := c.baseURL.ResolveReference(rel)
 
 	req, err := http.NewRequest(method, u.String(), body)
 	if err != nil {
@@ -135,7 +135,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	return resp, err
 }
 
-// Do sends an API request and returns the API response as a slice of bytes.
+// DoPlain sends an API request and returns the API response as a slice of bytes.
 func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
 	req.Header.Set("Accept", "text/plain")
 
@@ -169,7 +169,7 @@ type ErrorResponse struct {
 }
 
 func (r *ErrorResponse) Error() string {
-	return fmt.Sprintf("%v %v: %d %+v %+v",
+	return fmt.Sprintf("%v %v: %d %+v",
 		r.Response.Request.Method, r.Response.Request.URL,
 		r.Response.StatusCode, r.Message)
 }
