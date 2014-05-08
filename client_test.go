@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 var (
@@ -69,15 +71,6 @@ func testHeader(t *testing.T, r *http.Request, header string, want string) {
 	}
 }
 
-func testURLParseError(t *testing.T, err error) {
-	if err == nil {
-		t.Errorf("Expected error to be returned")
-	}
-	if err, ok := err.(*url.Error); !ok || err.Op != "parse" {
-		t.Errorf("Expected URL parse error, got %+v", err)
-	}
-}
-
 func testBody(t *testing.T, r *http.Request, want string) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -118,142 +111,146 @@ func testJSONMarshal(t *testing.T, v interface{}, want string) {
 }
 
 func TestNewClient(t *testing.T) {
-	c := NewClient(nil)
+	var c *Client
+	Convey("Given a new Client", t, func() {
+		c = NewClient(nil)
 
-	if c.BaseURL.String() != defaultBaseURL {
-		t.Errorf("NewClient BaseURL = %v, want %v", c.BaseURL.String(), defaultBaseURL)
-	}
-	if c.UserAgent != userAgent {
-		t.Errorf("NewClient UserAgent = %v, want %v", c.UserAgent, userAgent)
-	}
+		Convey("It should have the correct BaseURL", func() {
+			So(c.BaseURL.String(), ShouldEqual, defaultBaseURL)
+		})
+
+		Convey("It should have the correct UserAgent", func() {
+			So(c.UserAgent, ShouldEqual, userAgent)
+		})
+	})
 }
 
 func TestNewRequest(t *testing.T) {
-	c := NewClient(nil)
+	var (
+		c   *Client
+		req *http.Request
+	)
 
 	type createPut struct {
 		Name, Email string
 	}
 
-	inURL, outURL := "foo", defaultBaseURL+"foo"
-	inBody, outBody := &createPut{Name: "l", Email: "hi@me.com"}, `{"Name":"l","Email":"hi@me.com"}`+"\n"
-	req, _ := c.NewRequest("PUT", inURL, inBody)
+	Convey("Given a valid Request", t, func() {
+		c = NewClient(nil)
 
-	// test that relative URL was expanded
-	if req.URL.String() != outURL {
-		t.Errorf("NewRequest(%v) URL = %v, want %v", inURL, req.URL, outURL)
-	}
+		inURL, outURL := "foo", defaultBaseURL+"foo"
+		inBody, outBody := &createPut{Name: "l", Email: "hi@me.com"}, `{"Name":"l","Email":"hi@me.com"}`+"\n"
+		req, _ = c.NewRequest("PUT", inURL, inBody)
 
-	// test that body was JSON encoded
-	body, _ := ioutil.ReadAll(req.Body)
-	if string(body) != outBody {
-		t.Errorf("NewRequest(%v) Body = %v, want %v", inBody, string(body), outBody)
-	}
+		Convey("It should have its URL expanded", func() {
+			So(req.URL.String(), ShouldEqual, outURL)
+		})
 
-	// test that default user-agent is attached to the request
-	userAgent := req.Header.Get("User-Agent")
-	if c.UserAgent != userAgent {
-		t.Errorf("NewRequest() User-Agent = %v, want %v", userAgent, c.UserAgent)
-	}
-}
+		Convey("It should encode the body in JSON", func() {
+			body, _ := ioutil.ReadAll(req.Body)
+			So(string(body), ShouldEqual, outBody)
+		})
 
-func TestNewRequest_invalidJSON(t *testing.T) {
-	c := NewClient(nil)
+		Convey("It should have the default user-agent is attached to the request", func() {
+			userAgent := req.Header.Get("User-Agent")
+			So(c.UserAgent, ShouldEqual, userAgent)
+		})
 
-	type T struct {
-		A map[int]interface{}
-	}
-	_, err := c.NewRequest("GET", "/", &T{})
+	})
 
-	if err == nil {
-		t.Error("Expected error to be returned.")
-	}
-	if err, ok := err.(*json.UnsupportedTypeError); !ok {
-		t.Errorf("Expected a JSON error; got %#v.", err)
-	}
-}
+	Convey("Given an invalid Request", t, func() {
+		c = NewClient(nil)
 
-func TestNewRequest_badURL(t *testing.T) {
-	c := NewClient(nil)
-	_, err := c.NewRequest("GET", ":", nil)
-	testURLParseError(t, err)
+		type T struct {
+			A map[int]interface{}
+		}
+		_, err := c.NewRequest("GET", "/", &T{})
+
+		Convey("It should return an error (beeing *json.UnsupportedTypeError)", func() {
+			So(err, ShouldNotBeNil)
+			So(err, ShouldHaveSameTypeAs, &json.UnsupportedTypeError{})
+		})
+
+	})
+
+	Convey("Given a bad Request URL", t, func() {
+		c = NewClient(nil)
+
+		_, err := c.NewRequest("GET", ":", nil)
+		Convey("It should return an error (beeing *url.Error{})", func() {
+			So(err, ShouldNotBeNil)
+			So(err, ShouldHaveSameTypeAs, &url.Error{})
+		})
+	})
 }
 
 func TestDo(t *testing.T) {
-	setup()
-	defer teardown()
 
-	type foo struct {
-		A string
-	}
+	Convey("Given a clean test server", t, func() {
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if m := "GET"; m != r.Method {
-			t.Errorf("Request method = %v, want %v", r.Method, m)
-		}
-		fmt.Fprint(w, `{"A":"a"}`)
+		Convey("Do() should send the request", func() {
+			setup()
+
+			type foo struct {
+				A string
+			}
+
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				So(r.Method, ShouldEqual, "GET")
+
+				fmt.Fprint(w, `{"A":"a"}`)
+			})
+
+			req, _ := client.NewRequest("GET", "/", nil)
+			body := new(foo)
+			client.Do(req, body)
+
+			So(body, ShouldResemble, &foo{"a"})
+		})
+
+		Convey("A Bad Request should return an error", func() {
+			setup()
+
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "Bad Request", 400)
+			})
+
+			req, _ := client.NewRequest("GET", "/", nil)
+			_, err := client.Do(req, nil)
+			So(err, ShouldNotBeNil)
+
+		})
+
+		Convey("A plain request should get response", func() {
+			setup()
+
+			want := `/api/v0.1/servertime`
+
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				So(r.Method, ShouldEqual, "GET")
+				fmt.Fprint(w, want)
+			})
+
+			req, _ := client.NewRequest("GET", "/", nil)
+			resp, _, _ := client.DoPlain(req)
+
+			body := string(resp)
+			So(body, ShouldEqual, want)
+		})
+
+		Convey("A bad plain request should return a http error", func() {
+			setup()
+
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "Bad Request", 400)
+			})
+
+			req, _ := client.NewRequest("GET", "/", nil)
+			_, _, err := client.DoPlain(req)
+			So(err, ShouldNotBeNil)
+		})
+
+		Reset(teardown)
 	})
 
-	req, _ := client.NewRequest("GET", "/", nil)
-	body := new(foo)
-	client.Do(req, body)
-
-	want := &foo{"a"}
-	if !reflect.DeepEqual(body, want) {
-		t.Errorf("Response body = %v, want %v", body, want)
-	}
-}
-
-func TestDo_httpError(t *testing.T) {
-	setup()
-	defer teardown()
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Bad Request", 400)
-	})
-
-	req, _ := client.NewRequest("GET", "/", nil)
-	_, err := client.Do(req, nil)
-
-	if err == nil {
-		t.Error("Expected HTTP 400 error.")
-	}
-}
-
-func TestDoPlain(t *testing.T) {
-	setup()
-	defer teardown()
-
-	want := `/api/v0.1/servertime`
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if m := "GET"; m != r.Method {
-			t.Errorf("Request method = %v, want %v", r.Method, m)
-		}
-		fmt.Fprint(w, want)
-	})
-
-	req, _ := client.NewRequest("GET", "/", nil)
-	resp, _, _ := client.DoPlain(req)
-
-	body := string(resp)
-	if body != want {
-		t.Errorf("Response body = %v, want %v", body, want)
-	}
-}
-
-func TestDoPlain_httpError(t *testing.T) {
-	setup()
-	defer teardown()
-
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Bad Request", 400)
-	})
-
-	req, _ := client.NewRequest("GET", "/", nil)
-	_, _, err := client.DoPlain(req)
-
-	if err == nil {
-		t.Error("Expected HTTP 400 error.")
-	}
 }
