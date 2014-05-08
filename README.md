@@ -11,38 +11,16 @@ With [go](http://golang.org) installed:
 go get github.com/cryptix/pshdlSync
 ```
 
-_I am working on precompiled binaries, too. If you don't want to program in go yourself you don't have to install it._
-
+_I'll add binarys soon. [goxc](https://github.com/laher/goxc) is aweosme_
 ## Usage
 
-Currently there are three commands. __open__, __new__ and __stream__.
+This looks for a `.wid` file in your current directory.
+If it finds one, it looks for 16 characters inside, specifing the workspace id.
+
+If the workspace exists it downloads all pshdl code and starts watching for changes.
+
+If there is no `.wid` file it will create a new one.
 
 
-### Open
-This downloads an existing workspace to your harddrive and starts watching it for changes.
-_It creates a new directory in your current working directory with the Id of the workspace as a name._
-
-```
-pshdlSync open <wid>
-```
-
-### New
-This Requests a new workspace on the API. It also starts watching the supplied path for changes.
-
-
-```
-pshdlSync new <path>
-```
-
-### Stream
-This uses the streaming API to hook on events. The default is just to display events. You can trigger the download of generated code with the flags __-vhdl__ and __-csim__. 
-
-```
-pshdlSync stream [flags] <wid>
-```
-
-## TODO/Ideas
-
-* Add flags to configure behaviour
-* Supply Problems and Errors to editors (for [SublimeLinter](https://github.com/SublimeLinter/SublimeLinter) for instance)
-* Add command line options to set Name and Email for new workspaces
+## TODO
+* write ID of a newly created workspace to `.wid`
