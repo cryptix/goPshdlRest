@@ -2,6 +2,9 @@ package goPshdlRest
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
 // CompilerService handles communication with the compiler related
@@ -43,6 +46,9 @@ const (
 // RequestSimCode sends a request for simulation code
 // if successfull, it returns the url for downloading the file
 func (s *CompilerService) RequestSimCode(ct SimCodeType, moduleName string) (string, error) {
+	if moduleName == "" {
+		return "", fmt.Errorf("missing moduleName")
+	}
 	var reqURL string
 	switch ct {
 	case SimC:
@@ -51,15 +57,30 @@ func (s *CompilerService) RequestSimCode(ct SimCodeType, moduleName string) (str
 		return "", fmt.Errorf("unsupported SimCodeType:%d", ct)
 	}
 
-	req, err := s.client.NewRequest("POST", reqURL, nil)
+	param := url.Values{}
+	param.Set("module", moduleName)
+
+	req, err := s.client.NewReaderRequest("POST", reqURL, strings.NewReader(param.Encode()), "")
 	if err != nil {
 		return "", err
 	}
 
-	_, _, err = s.client.DoPlain(req)
+	body, resp, err := s.client.DoPlain(req)
 	if err != nil {
 		return "", err
 	}
 
-	return "TODO", nil
+	if resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("error: RequestSimCode: Code was not created")
+	}
+
+	url := string(body)
+
+	if !strings.HasPrefix(url, fmt.Sprintf("/api/v0.1/workspace/%s/src-gen:psex:", s.ID)) {
+		return "", fmt.Errorf("error: RequestSimCode: invalid url returned: %s", url)
+	}
+
+	url = strings.TrimSpace(url)
+
+	return url, nil
 }
