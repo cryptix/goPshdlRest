@@ -32,9 +32,9 @@ type Client struct {
 
 	// Services used for talking to different parts of the PSHDL REST API.
 	Workspace *WorkspaceService
+	Compiler  *CompilerService
 
 	// not yet implemented
-	// Compiler *CompilerService
 	// Streaming  *StreamingService
 }
 
@@ -51,8 +51,8 @@ func NewClient(httpClient *http.Client) *Client {
 
 	c := &Client{client: httpClient, BaseURL: baseUrl, UserAgent: userAgent}
 	c.Workspace = &WorkspaceService{client: c}
+	c.Compiler = &CompilerService{client: c}
 	// not yet implemented
-	// c.Compiler = &CompilerService{client: c}
 	// c.Streaming = &CompilerService{client: c}
 	return c
 }
