@@ -137,8 +137,8 @@ func TestNewRequest(t *testing.T) {
 
 	Convey("Given a new Client", t, func() {
 		c = NewClient(nil)
-		Convey("Given a valid Request", func() {
 
+		Convey("and a valid Request", func() {
 			inURL, outURL := "foo", defaultBaseURL+"foo"
 			inBody, outBody := &createPut{Name: "l", Email: "hi@me.com"}, `{"Name":"l","Email":"hi@me.com"}`+"\n"
 			req, _ = c.NewRequest("PUT", inURL, inBody)
@@ -159,7 +159,7 @@ func TestNewRequest(t *testing.T) {
 
 		})
 
-		Convey("Given an invalid Request", func() {
+		Convey("and an invalid Request", func() {
 			type T struct {
 				A map[int]interface{}
 			}
@@ -172,7 +172,7 @@ func TestNewRequest(t *testing.T) {
 
 		})
 
-		Convey("Given a bad Request URL", func() {
+		Convey("and a bad Request URL", func() {
 			_, err := c.NewRequest("GET", ":", nil)
 			Convey("It should return an error (beeing *url.Error{})", func() {
 				So(err, ShouldNotBeNil)
