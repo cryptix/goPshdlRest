@@ -1,14 +1,12 @@
 package goPshdlRest
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -43,71 +41,6 @@ func setup() {
 // teardown closes the test HTTP server.
 func teardown() {
 	server.Close()
-}
-
-func testMethod(t *testing.T, r *http.Request, want string) {
-	if want != r.Method {
-		t.Errorf("Request method = %v, want %v", r.Method, want)
-	}
-}
-
-type values map[string]string
-
-func testFormValues(t *testing.T, r *http.Request, values values) {
-	want := url.Values{}
-	for k, v := range values {
-		want.Add(k, v)
-	}
-
-	r.ParseForm()
-	if !reflect.DeepEqual(want, r.Form) {
-		t.Errorf("Request parameters = %v, want %v", r.Form, want)
-	}
-}
-
-func testHeader(t *testing.T, r *http.Request, header string, want string) {
-	if value := r.Header.Get(header); want != value {
-		t.Errorf("Header %s = %s, want: %s", header, value, want)
-	}
-}
-
-func testBody(t *testing.T, r *http.Request, want string) {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		t.Errorf("Unable to read body")
-	}
-	str := string(b)
-	if want != str {
-		t.Errorf("Body = %s, want: %s", str, want)
-	}
-}
-
-// Helper function to test that a value is marshalled to JSON as expected.
-func testJSONMarshal(t *testing.T, v interface{}, want string) {
-	j, err := json.Marshal(v)
-	if err != nil {
-		t.Errorf("Unable to marshal JSON for %v", v)
-	}
-
-	w := new(bytes.Buffer)
-	err = json.Compact(w, []byte(want))
-	if err != nil {
-		t.Errorf("String is not valid json: %s", want)
-	}
-
-	if w.String() != string(j) {
-		t.Errorf("json.Marshal(%q) returned %s, want %s", v, j, w)
-	}
-
-	// now go the other direction and make sure things unmarshal as expected
-	u := reflect.ValueOf(v).Interface()
-	if err := json.Unmarshal([]byte(want), u); err != nil {
-		t.Errorf("Unable to unmarshal JSON for %v", want)
-	}
-
-	if !reflect.DeepEqual(v, u) {
-		t.Errorf("json.Unmarshal(%q) returned %s, want %s", want, u, v)
-	}
 }
 
 func TestNewClient(t *testing.T) {
