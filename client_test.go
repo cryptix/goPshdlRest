@@ -135,61 +135,60 @@ func TestNewRequest(t *testing.T) {
 		Name, Email string
 	}
 
-	Convey("Given a valid Request", t, func() {
+	Convey("Given a new Client", t, func() {
 		c = NewClient(nil)
+		Convey("Given a valid Request", func() {
 
-		inURL, outURL := "foo", defaultBaseURL+"foo"
-		inBody, outBody := &createPut{Name: "l", Email: "hi@me.com"}, `{"Name":"l","Email":"hi@me.com"}`+"\n"
-		req, _ = c.NewRequest("PUT", inURL, inBody)
+			inURL, outURL := "foo", defaultBaseURL+"foo"
+			inBody, outBody := &createPut{Name: "l", Email: "hi@me.com"}, `{"Name":"l","Email":"hi@me.com"}`+"\n"
+			req, _ = c.NewRequest("PUT", inURL, inBody)
 
-		Convey("It should have its URL expanded", func() {
-			So(req.URL.String(), ShouldEqual, outURL)
+			Convey("It should have its URL expanded", func() {
+				So(req.URL.String(), ShouldEqual, outURL)
+			})
+
+			Convey("It should encode the body in JSON", func() {
+				body, _ := ioutil.ReadAll(req.Body)
+				So(string(body), ShouldEqual, outBody)
+			})
+
+			Convey("It should have the default user-agent is attached to the request", func() {
+				userAgent := req.Header.Get("User-Agent")
+				So(c.UserAgent, ShouldEqual, userAgent)
+			})
+
 		})
 
-		Convey("It should encode the body in JSON", func() {
-			body, _ := ioutil.ReadAll(req.Body)
-			So(string(body), ShouldEqual, outBody)
+		Convey("Given an invalid Request", func() {
+			type T struct {
+				A map[int]interface{}
+			}
+			_, err := c.NewRequest("GET", "/", &T{})
+
+			Convey("It should return an error (beeing *json.UnsupportedTypeError)", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, &json.UnsupportedTypeError{})
+			})
+
 		})
 
-		Convey("It should have the default user-agent is attached to the request", func() {
-			userAgent := req.Header.Get("User-Agent")
-			So(c.UserAgent, ShouldEqual, userAgent)
+		Convey("Given a bad Request URL", func() {
+			_, err := c.NewRequest("GET", ":", nil)
+			Convey("It should return an error (beeing *url.Error{})", func() {
+				So(err, ShouldNotBeNil)
+				So(err, ShouldHaveSameTypeAs, &url.Error{})
+			})
 		})
-
 	})
 
-	Convey("Given an invalid Request", t, func() {
-		c = NewClient(nil)
-
-		type T struct {
-			A map[int]interface{}
-		}
-		_, err := c.NewRequest("GET", "/", &T{})
-
-		Convey("It should return an error (beeing *json.UnsupportedTypeError)", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, &json.UnsupportedTypeError{})
-		})
-
-	})
-
-	Convey("Given a bad Request URL", t, func() {
-		c = NewClient(nil)
-
-		_, err := c.NewRequest("GET", ":", nil)
-		Convey("It should return an error (beeing *url.Error{})", func() {
-			So(err, ShouldNotBeNil)
-			So(err, ShouldHaveSameTypeAs, &url.Error{})
-		})
-	})
 }
 
 func TestDo(t *testing.T) {
 
 	Convey("Given a clean test server", t, func() {
+		setup()
 
 		Convey("Do() should send the request", func() {
-			setup()
 
 			type foo struct {
 				A string
@@ -209,7 +208,6 @@ func TestDo(t *testing.T) {
 		})
 
 		Convey("A Bad Request should return an error", func() {
-			setup()
 
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Bad Request", 400)
@@ -222,7 +220,6 @@ func TestDo(t *testing.T) {
 		})
 
 		Convey("A plain request should get response", func() {
-			setup()
 
 			want := `/api/v0.1/servertime`
 
@@ -239,7 +236,6 @@ func TestDo(t *testing.T) {
 		})
 
 		Convey("A bad plain request should return a http error", func() {
-			setup()
 
 			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "Bad Request", 400)
