@@ -28,14 +28,19 @@ func main() {
 		if err != nil {
 			log.Fatalf("Workspace.GetInfo() API Error: %s\n", err)
 		}
-		log.Printf("Workspace Opened:%s\nFiles:%v\n", wp.ID, wp.Files)
+		log.Printf("Workspace Opened:%s", wp.ID)
+
+		log.Println("Files:")
+		for _, f := range wp.Files {
+			log.Println("*", f.Record.RelPath)
+		}
 
 		// todo check if files allready there
 		err = client.Workspace.DownloadAllFiles()
 		if err != nil {
 			log.Fatalf("Workspace.DownloadAllFiles() API Error: %s\n", err)
 		}
-		log.Printf("Download of PSHDL-Code complete")
+		log.Println("Download of PSHDL-Code complete.")
 
 	} else if os.IsNotExist(err) {
 		log.Println("No <.wid> file, create new workspace")
@@ -67,26 +72,38 @@ func main() {
 		for {
 			select {
 			case ev := <-watcher.Event:
+
 				if strings.HasSuffix(ev.Name, ".pshdl") {
-					log.Println("PSHDL Code! Adding", ev.Name)
+					switch {
 
-					file, err := os.Open(ev.Name)
-					if err != nil {
-						log.Fatalf("os.Open error: %s\n", err)
-						done <- true
-						return
-					}
+					case ev.IsCreate():
+						log.Println(ev.Name, "created waiting for save...")
 
-					err = client.Workspace.UploadFile(filepath.Base(ev.Name), file)
-					if err != nil {
-						log.Fatalf("UploadFile error: %s\n", err)
-						done <- true
-						return
+					case ev.IsModify():
+						log.Println(ev.Name, "modified, uploading...")
+						file, err := os.Open(ev.Name)
+						if err != nil {
+							log.Fatalf("os.Open error: %s\n", err)
+							done <- true
+							return
+						}
+
+						err = client.Workspace.UploadFile(filepath.Base(ev.Name), file)
+						if err != nil {
+							log.Fatalf("UploadFile error: %s\n", err)
+							done <- true
+							return
+						}
+						file.Close()
+
+					case ev.IsDelete():
+						log.Println(ev.Name, "deleted, removing from api wp...")
+						client.Workspace.Delete(ev.Name)
 					}
-					file.Close()
 				}
+
 			case err := <-watcher.Error:
-				log.Println("error:", err)
+				log.Println("watcher.Error:", err)
 				done <- true
 			}
 		}
