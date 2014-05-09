@@ -1,4 +1,4 @@
-package goPshdlRest
+package pshdlApi
 
 import (
 	"fmt"
@@ -30,7 +30,7 @@ func (ev *WorskpaceUpdatedEvent) GetFiles() []Record {
 	return files
 }
 
-func (ev *WorskpaceUpdatedEvent) DownloadFiles() error {
+func (ev *WorskpaceUpdatedEvent) DownloadFiles(ws WorkspaceService) error {
 	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceUpdatedEvent.")
 	return nil
 }
@@ -51,11 +51,6 @@ func (ev *WorskpaceDeletedEvent) GetFiles() []Record {
 	return files
 }
 
-func (ev *WorskpaceDeletedEvent) DownloadFiles() error {
-	fmt.Fprintln(os.Stderr, "[!] Download not support for WorskpaceDeletedEvent.")
-	return nil
-}
-
 // P:COMPILER:VHDL
 type CompilerVhdlEvent struct {
 	PshdlEventMetaInfo
@@ -73,21 +68,22 @@ func (ev *CompilerVhdlEvent) GetSubject() string {
 func (ev *CompilerVhdlEvent) GetFiles() []Record {
 	files := make([]Record, len(ev.Contents))
 	for i, f := range ev.Contents {
-		if len(f.Files) == 1 {
-			files[i] = f.Files[0]
+		files[i] = f.Files[0]
+		if len(f.Files) != 1 {
+			fmt.Fprintln(os.Stderr, "[!] CompilerVhdlEvent.GetFiles() Warning: Multiple Files inside ContentsRecord.")
 		}
 	}
 	return files
 }
 
-func (ev *CompilerVhdlEvent) DownloadFiles() error {
-	return downloadApiFiles(ev)
-}
-
 // P:COMPILER:C
 type CompilerCEvent struct {
 	PshdlEventMetaInfo
-	Contents Record
+	Contents []struct {
+		Created  int
+		Problems []Problem
+		Files    []Record
+	}
 }
 
 func (ev *CompilerCEvent) GetSubject() string {
@@ -95,44 +91,12 @@ func (ev *CompilerCEvent) GetSubject() string {
 }
 
 func (ev *CompilerCEvent) GetFiles() []Record {
-	files := make([]Record, 1)
-	files[0] = ev.Contents
+	files := make([]Record, len(ev.Contents))
+	for i, f := range ev.Contents {
+		files[i] = f.Files[0]
+		if len(f.Files) != 1 {
+			fmt.Fprintln(os.Stderr, "[!] CompilerCEvent.GetFiles() Warning: Multiple Files inside ContentsRecord.")
+		}
+	}
 	return files
-}
-
-func (ev *CompilerCEvent) DownloadFiles() error {
-	return downloadApiFiles(ev)
-}
-
-func downloadApiFiles(ev StreamingEvent) error {
-	files := ev.GetFiles()
-
-	count := len(files)
-
-	if count == 0 {
-		fmt.Println("[*] No Files to download.")
-		return nil
-	}
-
-	errc := make(chan error)
-
-	for _, file := range files {
-		fmt.Printf("[*] Downloading %s\n", file.RelPath)
-		// ugly...
-		go func(f Record) {
-			// f.DownloadFile(errc)
-			fmt.Println("Download files TODO")
-		}(file)
-	}
-
-	for err := range errc {
-		if err != nil {
-			return err
-		}
-		count -= 1
-		if count == 0 {
-			close(errc)
-		}
-	}
-	return nil
 }

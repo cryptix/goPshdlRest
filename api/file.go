@@ -1,4 +1,4 @@
-package goPshdlRest
+package pshdlApi
 
 type Problem struct {
 	Advise struct {
@@ -19,6 +19,7 @@ type Record struct {
 	RelPath      string
 	FileURI      string
 	LastModified int
+	Hash         string
 }
 
 type ModuleInfos struct{}

@@ -1,4 +1,4 @@
-package goPshdlRest
+package pshdlApi
 
 import (
 	"fmt"
@@ -23,10 +23,12 @@ func (s *CompilerService) Validate() error {
 		return err
 	}
 
-	_, _, err = s.client.DoPlain(req)
+	body, _, err := s.client.DoPlain(req)
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Validate Body:%s\n", string(body))
 
 	return nil
 }

@@ -1,4 +1,4 @@
-package goPshdlRest
+package pshdlApi
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -153,14 +154,11 @@ func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
 	return nil
 }
 
-func (s *WorkspaceService) DownloadAllFiles() error {
-	wp, _, err := s.GetInfo()
-	if err != nil {
-		return fmt.Errorf("s.GetInfo() Error: %s", err)
-	}
-
+// DownloadRecords starts DownloadRecord for each Record
+// in its own goroutine and waits until all are finished or one of them returns an error
+func (s *WorkspaceService) DownloadRecords(recs []Record) error {
 	errc := make(chan error)
-	fileCount := len(wp.Files)
+	fileCount := len(recs)
 
 	if fileCount == 0 {
 		return nil
@@ -168,15 +166,15 @@ func (s *WorkspaceService) DownloadAllFiles() error {
 
 	start := time.Now()
 
-	for _, f := range wp.Files {
-		go func(f File) {
-			err := s.DownloadFile(f.Record.RelPath)
+	for _, r := range recs {
+		go func(rec Record) {
+			err := s.DownloadRecord(rec)
 			if err != nil {
 				errc <- err //fmt.Fprintf(os.Stderr, "Could not http.Get %s - %s\n", file.Record.RelPath, err)
 				return
 			}
 			errc <- nil
-		}(f)
+		}(r)
 	}
 
 	for {
@@ -193,22 +191,21 @@ func (s *WorkspaceService) DownloadAllFiles() error {
 			}
 
 		case <-time.After(5 * time.Second):
-			fmt.Fprintf(os.Stderr, "DownloadAllFiles() Waiting.. \n%d files left. Duration: %s\n", fileCount, time.Since(start))
+			fmt.Fprintf(os.Stderr, "DownloadRecords() Waiting.. \n%d files left. Duration: %s\n", fileCount, time.Since(start))
 		}
 	}
 }
 
-// DownloadFile returns a copy of fname
-func (s *WorkspaceService) DownloadFile(fname string) error {
+// DownloadRecord returns a copy of fname
+func (s *WorkspaceService) DownloadRecord(rec Record) error {
 	if s.ID == "" {
 		return fmt.Errorf("workspace ID not set")
 	}
 
-	req, err := s.client.NewRequest("GET", fmt.Sprintf("workspace/%s/%s", s.ID, fname), nil)
+	req, err := s.client.NewRequest("GET", rec.FileURI, nil)
 	if err != nil {
 		return fmt.Errorf("client.NewRequest() error: %s", err)
 	}
-
 	req.Header.Set("Accept", "text/plain")
 
 	resp, err := s.client.Do(req, nil)
@@ -217,9 +214,17 @@ func (s *WorkspaceService) DownloadFile(fname string) error {
 	}
 	defer resp.Body.Close()
 
-	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0700)
+	dir, _ := path.Split(rec.RelPath)
+	if dir != "" {
+		err = os.MkdirAll(dir, 0700)
+		if err != nil {
+			return fmt.Errorf("os.MkdirAll() error: %s", err)
+		}
+	}
+
+	f, err := os.OpenFile(rec.RelPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
-		return fmt.Errorf("os.OpenFile() error: %s", err)
+		return fmt.Errorf("os.OpenFile() error: %s\nRecord:%v", err, rec)
 	}
 	defer f.Close()
 
@@ -228,13 +233,17 @@ func (s *WorkspaceService) DownloadFile(fname string) error {
 		return err
 	}
 
-	fileLength, err := strconv.Atoi(resp.Header.Get("Content-Length"))
-	if err != nil {
-		return err
-	}
+	if resp.Header.Get("Content-Length") != "" {
+		fileLength, err := strconv.Atoi(resp.Header.Get("Content-Length"))
+		if err != nil {
+			return err
+		}
 
-	if int(copied) != fileLength {
-		return fmt.Errorf(" io.Copy(f, resp.Body) did not copy the whole file. got <%d> wanted <%d>", copied, fileLength)
+		if int(copied) != fileLength {
+			return fmt.Errorf("io.Copy(f, resp.Body) did not copy the whole file. got <%d> wanted <%d>", copied, fileLength)
+		}
+		// } else {
+		// fmt.Fprintf(os.Stderr, "Warning, no Content-Length set.\nResp:%v\n", resp)
 	}
 
 	return nil

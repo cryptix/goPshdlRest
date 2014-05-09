@@ -1,4 +1,4 @@
-package goPshdlRest
+package pshdlApi
 
 import (
 	"fmt"

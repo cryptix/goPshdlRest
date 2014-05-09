@@ -1,4 +1,4 @@
-package goPshdlRest
+package pshdlApi
 
 import (
 	"bytes"
@@ -135,7 +135,7 @@ func TestWorkspaceService(t *testing.T) {
 			})
 		})
 
-		Convey("DownloadFile() with a valID request", func() {
+		Convey("DownloadRecord() with a valID request", func() {
 			client.Workspace.ID = "1234"
 			fName := "test.pshdl"
 			fContent := "module test {}"
@@ -148,12 +148,12 @@ func TestWorkspaceService(t *testing.T) {
 				fmt.Fprintf(w, fContent)
 			})
 
-			err := client.Workspace.DownloadFile(fName)
+			err := client.Workspace.DownloadRecord(Record{FileURI: testURL, RelPath: fName})
 			So(err, ShouldBeNil)
 		})
 
-		Convey("DownloadFile() without an ID", func() {
-			err := client.Workspace.DownloadFile("hansfranz.pshdl")
+		Convey("DownloadRecord() without an ID", func() {
+			err := client.Workspace.DownloadRecord(Record{RelPath: "hansfranz.pshdl"})
 			So(err, ShouldNotBeNil)
 		})
 

@@ -1,4 +1,4 @@
-package goPshdlRest
+package pshdlApi
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 const (
 	libraryVersion = "0.1"
 	defaultBaseURL = "http://api.pshdl.org/api/v0.1/"
-	userAgent      = "goPshdlRest/" + libraryVersion
+	userAgent      = "pshdlApi/" + libraryVersion
 
 	defaultAccept    = "application/json"
 	defaultMediaType = "application/octet-stream"
@@ -33,9 +33,7 @@ type Client struct {
 	// Services used for talking to different parts of the PSHDL REST API.
 	Workspace *WorkspaceService
 	Compiler  *CompilerService
-
-	// not yet implemented
-	// Streaming  *StreamingService
+	Streaming *StreamingService
 }
 
 // NewClient returns a new PSHDL REST API client.  If a nil httpClient is
@@ -52,8 +50,25 @@ func NewClient(httpClient *http.Client) *Client {
 	c := &Client{client: httpClient, baseURL: baseURL, UserAgent: userAgent}
 	c.Workspace = &WorkspaceService{client: c}
 	c.Compiler = &CompilerService{client: c}
-	// not yet implemented
-	// c.Streaming = &CompilerService{client: c}
+	c.Streaming = &StreamingService{client: c}
+	return c
+}
+
+// NewClientWithID returns a new PSHDL REST API client.  If a nil httpClient is
+// provided, http.DefaultClient will be used.
+func NewClientWithID(httpClient *http.Client, id string) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+	baseURL, err := url.Parse(defaultBaseURL)
+	if err != nil {
+		panic(err)
+	}
+
+	c := &Client{client: httpClient, baseURL: baseURL, UserAgent: userAgent}
+	c.Workspace = &WorkspaceService{client: c, ID: id}
+	c.Compiler = &CompilerService{client: c, ID: id}
+	c.Streaming = &StreamingService{client: c, ID: id}
 	return c
 }
 
@@ -142,7 +157,6 @@ func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-
 	defer resp.Body.Close()
 
 	err = CheckResponse(resp)
@@ -153,7 +167,6 @@ func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
 	}
 
 	data, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
 	return data, resp, err
 }
 
