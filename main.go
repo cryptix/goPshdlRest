@@ -31,14 +31,16 @@ func main() {
 		log.Printf("Workspace Opened:%s", wp.ID)
 
 		log.Println("Files:")
-		for _, f := range wp.Files {
+		recs := make([]api.Record, len(wp.Files))
+		for i, f := range wp.Files {
 			log.Println("*", f.Record.RelPath)
+			recs[i] = f.Record
 		}
 
 		// todo check if files allready there
-		err = client.Workspace.DownloadAllFiles()
+		err = client.Workspace.DownloadRecords(recs)
 		if err != nil {
-			log.Fatalf("Workspace.DownloadAllFiles() API Error: %s\n", err)
+			log.Fatalf("Workspace.DownloadRecords() API Error: %s\n", err)
 		}
 		log.Println("Download of PSHDL-Code complete.")
 
