@@ -7,20 +7,20 @@ import (
 	"path/filepath"
 	"strings"
 
-	api "github.com/cryptix/goPshdlRest"
+	"github.com/cryptix/goPshdlRest/api"
 	"github.com/howeyc/fsnotify"
 )
 
 func main() {
-	var wp *api.Workspace
-	client := api.NewClient(nil)
+	var wp *pshdlApi.Workspace
+	client := pshdlApi.NewClient(nil)
 
 	// check if we have a workspace id file
 	widFile, err := os.Open(".wid")
 	if err == nil {
 		wid, err := ioutil.ReadAll(widFile)
 
-		client = api.NewClient(nil)
+		client = pshdlApi.NewClient(nil)
 		client.Workspace.ID = string(wid)
 		client.Compiler.ID = string(wid)
 
@@ -31,7 +31,7 @@ func main() {
 		log.Printf("Workspace Opened:%s", wp.ID)
 
 		log.Println("Files:")
-		recs := make([]api.Record, len(wp.Files))
+		recs := make([]pshdlApi.Record, len(wp.Files))
 		for i, f := range wp.Files {
 			log.Println("*", f.Record.RelPath)
 			recs[i] = f.Record

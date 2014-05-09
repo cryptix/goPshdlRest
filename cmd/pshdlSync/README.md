@@ -8,7 +8,7 @@ Uploads changes from the local copy of a workspace to the remote one.
 ## Installation
 With [go](http://golang.org) installed:
 ```
-go get github.com/cryptix/pshdlSync
+go get github.com/cryptix/goPshdlRest/cmd/pshdlSync
 ```
 
 _I'll add binarys soon. [goxc](https://github.com/laher/goxc) is aweosme_
