@@ -21,4 +21,5 @@ _testmain.go
 
 *.exe
 
-pshdlSync
+api/test.pshdl
+api/api.test
