@@ -8,12 +8,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/bndr/gopencils"
 )
 
 const (
 	libraryVersion = "0.1"
 	defaultBaseURL = "http://api.pshdl.org/api/v0.1/"
-	userAgent      = "pshdlApi/" + libraryVersion
+	userAgent      = "goPshdlRest/" + libraryVersion
 
 	defaultAccept    = "application/json"
 	defaultMediaType = "application/octet-stream"
@@ -21,6 +23,9 @@ const (
 
 // A Client manages communication with the Pshdl Rest API.
 type Client struct {
+	// new rest api client
+	api *gopencils.Resource
+
 	// HTTP client used to communicate with the API.
 	client *http.Client
 
@@ -48,6 +53,9 @@ func NewClient(httpClient *http.Client) *Client {
 	}
 
 	c := &Client{client: httpClient, baseURL: baseURL, UserAgent: userAgent}
+
+	c.api = gopencils.Api(defaultBaseURL)
+
 	c.Workspace = &WorkspaceService{client: c}
 	c.Compiler = &CompilerService{client: c}
 	c.Streaming = &StreamingService{client: c}

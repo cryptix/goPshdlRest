@@ -83,7 +83,8 @@ func TestWorkspaceService(t *testing.T) {
 				mux.HandleFunc(fmt.Sprintf("/api/v0.1/workspace/%s/%s", client.Workspace.ID, fname),
 					func(w http.ResponseWriter, r *http.Request) {
 						So(r.Method, ShouldEqual, "DELETE")
-						http.Error(w, "", http.StatusOK)
+						// TODO: karsten nerven das leerer output nich klar geht
+						http.Error(w, "{}", http.StatusOK)
 					})
 
 				done, _, err := client.Workspace.Delete(fname)
@@ -122,7 +123,8 @@ func TestWorkspaceService(t *testing.T) {
 						So(err, ShouldBeNil)
 						So(buf.String(), ShouldEqual, string(content))
 
-						http.Error(w, "", http.StatusOK)
+						// TODO: karsten nerven das leerer output nich klar geht
+						http.Error(w, "{}", http.StatusOK)
 					})
 
 				err := client.Workspace.UploadFile(fname, bytes.NewReader(content))

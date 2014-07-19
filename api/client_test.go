@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/bndr/gopencils"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -34,6 +35,7 @@ func setup() {
 	// github client configured to use test server
 	client = NewClient(nil)
 	url, _ := url.Parse(server.URL + "/api/v0.1/")
+	client.api = gopencils.Api(server.URL + "/api/v0.1/")
 	client.baseURL = url
 	client.Workspace.ID = "1234"
 	client.Compiler.ID = "1234"

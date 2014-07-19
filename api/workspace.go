@@ -2,6 +2,7 @@ package pshdlApi
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -18,6 +19,10 @@ import (
 const (
 	defaultName  = "JohnGo"
 	defaultEmail = "none@me.com"
+)
+
+var (
+	ErrNoWorkspaceID = errors.New("workspace ID not set")
 )
 
 // WorkspaceService handles communication with the workspace related
@@ -73,51 +78,31 @@ func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {
 
 // GetInfo gets all the info there is to get for a PSHDL Workspace
 func (s *WorkspaceService) GetInfo() (*Workspace, *http.Response, error) {
-	req, err := s.client.NewRequest("GET", "workspace/"+s.ID, nil)
-	if err != nil {
-		return nil, nil, err
+	if s.ID == "" {
+		return nil, nil, ErrNoWorkspaceID
 	}
 
 	w := new(Workspace)
-	resp, err := s.client.Do(req, w)
-	if err != nil {
-		return nil, resp, err
-	}
+	res, err := s.client.api.Res("workspace", w).Id(s.ID).Get()
 
-	if w.ID != s.ID {
-		return nil, nil, fmt.Errorf("we got response for %v a different workspace", w)
-	}
-
-	return w, resp, err
+	return w, res.Raw, err
 }
 
 // Delete removes the file `fname` from the specified workspace
 func (s *WorkspaceService) Delete(fname string) (bool, *http.Response, error) {
 	if s.ID == "" {
-		return false, nil, fmt.Errorf("workspace ID not set")
+		return false, nil, ErrNoWorkspaceID
 	}
 
-	req, err := s.client.NewRequest("DELETE", fmt.Sprintf("workspace/%s/%s", s.ID, fname), nil)
-	if err != nil {
-		return false, nil, err
-	}
+	res, err := s.client.api.Res("workspace").Id(fmt.Sprintf("%s/%s", s.ID, fname)).Delete()
 
-	_, resp, err := s.client.DoPlain(req)
-	if err != nil {
-		return false, resp, err
-	}
-
-	if resp.StatusCode != 200 {
-		return false, resp, fmt.Errorf("file was not deleted")
-	}
-
-	return true, resp, err
+	return true, res.Raw, err
 }
 
 // UploadFile adds a file with fname to the Workspace specified by ID
 func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
 	if s.ID == "" {
-		return fmt.Errorf("workspace ID not set")
+		return ErrNoWorkspaceID
 	}
 
 	// convert Upload to Multipart
@@ -139,19 +124,13 @@ func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
 		return err
 	}
 
-	// prepare request
-	req, err := s.client.NewReaderRequest("POST", fmt.Sprintf("workspace/%s", s.ID), reqBody, writer.FormDataContentType())
-	if err != nil {
-		return err
-	}
+	res := client.api.Res("workspace").Id(s.ID)
+	res.SetHeader("Accept", "text/plain")
+	res.SetHeader("Content-Type", writer.FormDataContentType())
+	res.Payload = reqBody
+	_, err = res.Post()
 
-	// do the request
-	_, _, err = s.client.DoPlain(req)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // DownloadRecords starts DownloadRecord for each Record
@@ -199,7 +178,7 @@ func (s *WorkspaceService) DownloadRecords(recs []Record) error {
 // DownloadRecord returns a copy of fname
 func (s *WorkspaceService) DownloadRecord(rec Record) error {
 	if s.ID == "" {
-		return fmt.Errorf("workspace ID not set")
+		return ErrNoWorkspaceID
 	}
 
 	req, err := s.client.NewRequest("GET", rec.FileURI, nil)
