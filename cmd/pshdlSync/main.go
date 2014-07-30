@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/cryptix/goPshdlRest/api"
-	"github.com/howeyc/fsnotify"
+	"gopkg.in/fsnotify.v0"
 )
 
 func main() {
@@ -21,8 +21,8 @@ func main() {
 		wid, err := ioutil.ReadAll(widFile)
 
 		client = pshdlApi.NewClient(nil)
-		client.Workspace.ID = string(wid)
-		client.Compiler.ID = string(wid)
+		client.Workspace.ID = string(wid[:16])
+		client.Compiler.ID = string(wid[:16])
 
 		wp, _, err = client.Workspace.GetInfo()
 		if err != nil {
@@ -65,63 +65,63 @@ func main() {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	done := make(chan bool)
+	defer watcher.Close()
 
-	// Process events
+	done := make(chan struct{})
+
 	go func() {
-		for {
-			select {
-			case ev := <-watcher.Event:
-
-				if strings.HasSuffix(ev.Name, ".pshdl") {
-					switch {
-
-					case ev.IsCreate():
-						log.Println(ev.Name, "created waiting for save...")
-
-					case ev.IsModify():
-						log.Println(ev.Name, "modified, uploading...")
-						file, err := os.Open(ev.Name)
-						if err != nil {
-							log.Fatalf("os.Open error: %s\n", err)
-							done <- true
-							return
-						}
-
-						err = client.Workspace.UploadFile(filepath.Base(ev.Name), file)
-						if err != nil {
-							log.Fatalf("UploadFile error: %s\n", err)
-							done <- true
-							return
-						}
-						file.Close()
-
-					case ev.IsDelete():
-						log.Println(ev.Name, "deleted, removing from api wp...")
-						client.Workspace.Delete(ev.Name)
-					}
-				}
-
-			case err := <-watcher.Error:
-				log.Println("watcher.Error:", err)
-				done <- true
-			}
+		for err := range watcher.Errors {
+			close(done)
+			log.Fatal(err)
 		}
 	}()
 
-	err = watcher.Watch(".")
-	if err != nil {
-		if os.IsExist(err) {
-			log.Fatal("Invalid Watch Directory..")
+	// Process events
+	go func() {
+		for ev := range watcher.Events {
+
+			log.Println("event:", ev)
+
+			if strings.HasSuffix(ev.Name, ".pshdl") {
+				switch {
+
+				case ev.Op&fsnotify.Write == fsnotify.Write:
+					log.Println("write to ", ev.Name, ", uploading...")
+					file, err := os.Open(ev.Name)
+					if err != nil {
+						log.Fatalf("os.Open error: %s\n", err)
+						return
+					}
+
+					err = client.Workspace.UploadFile(filepath.Base(ev.Name), file)
+					if err != nil {
+						log.Fatalf("UploadFile error: %s\n", err)
+						return
+					}
+					file.Close()
+
+				case ev.Op&fsnotify.Remove == fsnotify.Remove:
+					log.Println(ev.Name, "deleted, removing from api wp...")
+					// client.Workspace.Delete(ev.Name)
+				}
+			}
 		}
-		panic(err)
+		close(done)
+	}()
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = watcher.Add(cwd)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	<-done
-
-	watcher.Close()
 
 	os.Exit(0)
 }
