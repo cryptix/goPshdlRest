@@ -30,8 +30,6 @@ func (s *CompilerService) Validate() (*Workspace, error) {
 		return nil, err
 	}
 
-	fmt.Printf("Validate Response:%s\n", wp)
-
 	return wp, nil
 }
 

@@ -147,7 +147,9 @@ func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype s
 // an API error has occurred.
 func (c *Client) Do(req *http.Request, v interface{}) (resp *http.Response, err error) {
 	start := time.Now()
-	defer dbg("client.Do(%v) (%s,%s) took:%v", req, resp, err, time.Since(start))
+	defer func() {
+		dbg("client.Do(%s) %s (%v)", req.URL.Path, resp.Status, time.Since(start))
+	}()
 
 	resp, err = c.client.Do(req)
 	if err != nil {
@@ -171,7 +173,9 @@ func (c *Client) Do(req *http.Request, v interface{}) (resp *http.Response, err 
 // DoPlain sends an API request and returns the API response as a slice of bytes.
 func (c *Client) DoPlain(req *http.Request) (data []byte, resp *http.Response, err error) {
 	start := time.Now()
-	defer dbg("client.DoPlain(%s) (%s,%s) took:%v", req, resp, err, time.Since(start))
+	defer func() {
+		dbg("client.DoPlain(%s) %s (%v)", req.URL.Path, resp.Status, time.Since(start))
+	}()
 
 	req.Header.Set("Accept", "text/plain")
 
