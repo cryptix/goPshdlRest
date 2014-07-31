@@ -44,6 +44,7 @@ func run(c *cli.Context) {
 
 	if os.IsNotExist(widStatErr) {
 		// TODO: pshdlApi.CreateWorkspace()
+		client = pshdlApi.NewClient(nil)
 		wp, _, err = client.Workspace.Create()
 		check(err)
 		log.Println("Workspace Created:", wp.ID)
@@ -52,7 +53,7 @@ func run(c *cli.Context) {
 		check(err)
 	}
 
-	if widStat.Mode().IsRegular() {
+	if widStat != nil && widStat.Mode().IsRegular() {
 		wid, err := ioutil.ReadFile(widFname)
 		check(err)
 

@@ -18,6 +18,8 @@ type CompilerService struct {
 // Validate sends a request for Validation of the workspace
 // TODO: Return result of validation
 func (s *CompilerService) Validate() (*Workspace, error) {
+	dbg("Compiler.Validate(%s)", s.ID)
+
 	req, err := s.client.NewRequest("POST", fmt.Sprintf("compiler/%s/validate", s.ID), nil)
 	if err != nil {
 		return nil, err
@@ -48,6 +50,7 @@ const (
 // RequestSimCode sends a request for simulation code
 // if successfull, it returns the url for downloading the file
 func (s *CompilerService) RequestSimCode(ct SimCodeType, moduleName string) (string, error) {
+	dbg("Compiler.Validate(%s) %d %s", s.ID, ct, moduleName)
 	if moduleName == "" {
 		return "", fmt.Errorf("missing moduleName")
 	}

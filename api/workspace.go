@@ -107,6 +107,8 @@ func (s *WorkspaceService) Delete(fname string) (bool, *http.Response, error) {
 
 // UploadFile adds a file with fname to the Workspace specified by ID
 func (s *WorkspaceService) UploadFile(fname string, fbuf io.Reader) error {
+	dbg("Workspace(%s) UploadFile(%s)", s.ID, fname)
+
 	if s.ID == "" {
 		return fmt.Errorf("workspace ID not set")
 	}
@@ -189,6 +191,7 @@ func (s *WorkspaceService) DownloadRecords(recs []Record) error {
 
 // DownloadRecord returns a copy of fname
 func (s *WorkspaceService) DownloadRecord(rec Record) error {
+	dbg("Workspace(%s) DownloadRecord(%s)", s.ID, rec.RelPath)
 	if s.ID == "" {
 		return fmt.Errorf("workspace ID not set")
 	}

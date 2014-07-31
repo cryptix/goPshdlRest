@@ -17,7 +17,15 @@ var tmplFiles = template.Must(template.New("tmplFiles").Parse(`
 	<title>List of Workspace {{.ID}}</title>
 		<script src="http://localhost:35729/livereload.js"></script>
 <body>
-<h1>Workspace - <small>{{.ID}} <strong>Validated:{{.Validated}}</strong></small> </h1>
+<h1>Workspace
+<small><a href="https://api.pshdl.org/api/v0.1/workspace/{{.ID}}">{{.ID}}</a> -
+{{if .Validated}}
+<em>validated</em>
+{{else}}
+<strong><a href="/validate">not validated</a></strong>
+{{end}}
+</small>
+</h1>
 
 {{range .Files}}
 			<h3>{{.Record.RelPath}}</h3>
@@ -45,4 +53,14 @@ func handler(rw http.ResponseWriter, req *http.Request) {
 	if err := tmplFiles.Execute(rw, workspace); err != nil {
 		panic(err)
 	}
+}
+
+func validateHandler(rw http.ResponseWriter, req *http.Request) {
+	var err error
+	workspace, err = apiClient.Compiler.Validate()
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(rw, req, "/", http.StatusFound)
 }

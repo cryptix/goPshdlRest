@@ -11,6 +11,7 @@ import (
 	"github.com/carbocation/interpose"
 	"github.com/codegangsta/cli"
 	"github.com/cryptix/goPshdlRest/api"
+	"github.com/gorilla/mux"
 	"github.com/jaschaephraim/lrserver"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/visionmedia/go-debug"
@@ -25,7 +26,7 @@ var dbg = debug.Debug("pshdlPortViewer")
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "pshdlViewer"
+	app.Name = "pshdlPortViewer"
 	app.Usage = "visualize a workspace with it's modules and ports"
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "workspace,w", Value: "", Usage: "The workspace to open"},
@@ -88,7 +89,11 @@ func run(c *cli.Context) {
 
 	}()
 	middle := interpose.New()
-	middle.UseHandler(http.HandlerFunc(handler))
+
+	r := mux.NewRouter()
+	r.HandleFunc("/", handler)
+	r.HandleFunc("/validate", validateHandler)
+	middle.UseHandler(r)
 
 	// Tell the browser which server this came from
 	middle.Use(func(next http.Handler) http.Handler {

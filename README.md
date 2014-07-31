@@ -30,3 +30,7 @@ It's not 100% complete but I'm working on it.
 * More Documentation!
 * Add Validate() and RequestSimCode() to clients
 * Write a client that retreives pshdl errors to integrate with editors.
+* Api inconsistancys
+    - as json request
+        - Workspace Create
+        - Upload?
