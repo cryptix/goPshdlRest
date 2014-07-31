@@ -32,29 +32,42 @@ type Record struct {
 type ModuleInfos struct {
 	Instances []string `json:"instances"`
 	Name      string   `json:"name"`
-	Ports     []struct {
-		Annotations []string      `json:"annotations"`
-		Dimensions  []interface{} `json:"dimensions"`
-		Dir         string        `json:"dir"`
-		Name        string        `json:"name"`
-		Primitive   string        `json:"primitive"`
-		Width       float64       `json:"width"`
-	} `json:"ports"`
-	Type string `json:"type"`
+	Ports     []Port   `json:"ports"`
+	Type      string   `json:"type"`
 }
 
 func (mi ModuleInfos) String() (s string) {
-	s = fmt.Sprintf("Module[%s] - %s\n",mi.Type, mi.Name)
+	s = fmt.Sprintf("Module[%s] - %s\n", mi.Type, mi.Name)
 
 	s += fmt.Sprintln("Instances:", mi.Instances)
 
 	s += fmt.Sprintln("Ports:")
-	for i,port := range mi.Ports {
-		s += fmt.Sprintf("#%2d [%-10s] <%2.0f bits>%-10s\n",i,port.Dir,port.Width,port.Name)
+	for i, port := range mi.Ports {
+		s += fmt.Sprintf("#%2d [%-10s] <%2.0f bits>%-10s\n", i, port.Dir, port.Width, port.Name)
 	}
 	return
 }
 
+type Port struct {
+	Annotations []string      `json:"annotations"`
+	Dimensions  []interface{} `json:"dimensions"`
+	Dir         string        `json:"dir"`
+	Name        string        `json:"name"`
+	Primitive   string        `json:"primitive"`
+	Width       float64       `json:"width"`
+}
+
+type ByDir []Port
+
+func (a ByDir) Len() int           { return len(a) }
+func (a ByDir) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByDir) Less(i, j int) bool { return a[i].Dir < a[j].Dir }
+
+type ByName []Port
+
+func (a ByName) Len() int           { return len(a) }
+func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByName) Less(i, j int) bool { return a[i].Name < a[j].Name }
 
 // File describes the current state of a pshdl file in a workspace
 type File struct {

@@ -47,7 +47,7 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 
 	go func() {
 		for ev := range sseEvent {
-			dbg("ssEvent: %s", string(ev.Data))
+
 			var peek struct {
 				Subject string
 				MsgType string
@@ -84,6 +84,8 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 			default:
 				fmt.Fprintf(os.Stderr, "Error unhandeld event type!:%v\n", peek)
 			}
+
+			dbg("ssEvent: %s", peek.Subject)
 
 			err = json.Unmarshal(ev.Data, &apiEvent)
 			if err != nil {

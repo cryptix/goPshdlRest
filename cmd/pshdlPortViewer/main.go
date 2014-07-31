@@ -8,16 +8,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/carbocation/interpose"
 	"github.com/codegangsta/cli"
 	"github.com/cryptix/goPshdlRest/api"
 	"github.com/jaschaephraim/lrserver"
 	"github.com/skratchdot/open-golang/open"
+	"github.com/visionmedia/go-debug"
 )
 
 var (
 	apiClient *pshdlApi.Client
 	workspace *pshdlApi.Workspace
 )
+
+var dbg = debug.Debug("pshdlPortViewer")
 
 func main() {
 	app := cli.NewApp()
@@ -43,7 +47,8 @@ func run(c *cli.Context) {
 	}
 
 	// Start LiveReload server
-	go lrserver.ListenAndServe()
+	lrs, err := lrserver.NewLRServer(nil)
+	check(err)
 
 	apiClient = pshdlApi.NewClientWithID(nil, wid)
 
@@ -55,54 +60,60 @@ func run(c *cli.Context) {
 
 	// Start goroutine that requests reload upon watcher event
 	go func() {
-		tick := time.Tick(time.Minute * 1)
-		for {
-			select {
-			case ev := <-evChan:
-				subj := ev.GetSubject()
-				log.Println("[R]", subj)
+		for ev := range evChan {
+			subj := ev.GetSubject()
+			log.Println("workspace event:", subj)
 
-				switch {
-				case strings.HasPrefix(subj, "P:WORKSPACE:"):
-					for _, file := range ev.GetFiles() {
-						log.Printf("[*] %s\n", file.RelPath)
-					}
-					go updateWorkspace()
-
-				}
-			case <-tick:
-				go updateWorkspace()
+			switch {
+			case strings.HasPrefix(subj, "P:WORKSPACE:"):
+				updateWorkspace()
+				lrs.Reload("workspaceUpdate")
 			}
 		}
-
 	}()
-
-	// Start serving html
-	http.HandleFunc("/", indexHandler)
-	// http.HandleFunc("/md", mdHandler)
-	http.Handle("/assets/", http.StripPrefix("/assets", http.FileServer(http.Dir("assets"))))
 
 	listenAddr := fmt.Sprintf("%s:%d", c.String("host"), c.Int("port"))
 
-	done := make(chan struct{})
+	// Start serving html
+	errc := make(chan error)
 	go func() {
-		err := http.ListenAndServe(listenAddr, nil)
-		check(err)
-		close(done)
+		select {
+		case e := <-errc:
+			check(e)
+		case <-time.After(time.Millisecond * 150):
+			log.Println("Opening Browser")
+			err = open.Run("http://" + listenAddr)
+			check(err)
+		}
+
 	}()
+	middle := interpose.New()
+	middle.UseHandler(http.HandlerFunc(handler))
 
-	err = open.Run("http://" + listenAddr)
+	// Tell the browser which server this came from
+	middle.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			start := time.Now()
+			next.ServeHTTP(rw, req)
+			dbg("http: %s (%v)", req.URL.Path, time.Since(start))
+		})
+	})
+
+	errc <- http.ListenAndServe(listenAddr, middle)
 	check(err)
+	close(errc)
 
-	<-done
 }
 
 func updateWorkspace() {
 	var err error
 	start := time.Now()
 	workspace, _, err = apiClient.Workspace.GetInfo()
-	check(err)
-	log.Println("GetInfo() returned after:", time.Since(start))
+	if err != nil {
+		log.Printf("updateWorkspace Failed: %s (%v)\n", err, time.Since(start))
+		return
+	}
+	dbg("updateWorkspace (%v)", time.Since(start))
 }
 
 func check(err error) {

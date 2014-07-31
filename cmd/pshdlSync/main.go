@@ -101,21 +101,16 @@ func run(c *cli.Context) {
 				case ev.Op&fsnotify.Create == fsnotify.Create:
 					fallthrough
 				case ev.Op&fsnotify.Write == fsnotify.Write:
-					log.Println("write to ", ev.Name, ", uploading...")
 					file, err := os.Open(ev.Name)
 					check(err)
+					log.Println("write to ", filepath.Base(ev.Name), ", uploading...")
 
 					err = client.Workspace.UploadFile(filepath.Base(ev.Name), file)
-					if err != nil {
-						log.Fatalf("UploadFile error: %s\n", err)
-						return
-					}
+					check(err)
 					file.Close()
 
 					_, err = client.Compiler.Validate()
-					if err != nil {
-						log.Printf("Validate error: %s\n", err)
-					}
+					check(err)
 
 				case ev.Op&fsnotify.Remove == fsnotify.Remove:
 					log.Println(ev.Name, "deleted, skipping...")

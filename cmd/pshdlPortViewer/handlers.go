@@ -2,7 +2,11 @@ package main
 
 import (
 	"html/template"
+	"log"
 	"net/http"
+	"sort"
+
+	"github.com/cryptix/goPshdlRest/api"
 )
 
 // tmplFiles template with list of files found in the workspace
@@ -24,10 +28,20 @@ var tmplFiles = template.Must(template.New("tmplFiles").Parse(`
 </html>
 `))
 
-// indexHandler builds a list with links to all .md files in the watchDir
-func indexHandler(rw http.ResponseWriter, req *http.Request) {
-
+func handler(rw http.ResponseWriter, req *http.Request) {
 	rw.WriteHeader(http.StatusOK)
+	if workspace == nil {
+		log.Println("workspace out of date..")
+		workspace = new(pshdlApi.Workspace)
+		return
+	}
+
+	for i, file := range workspace.Files {
+		ports := file.ModuleInfos[0].Ports
+		sort.Sort(pshdlApi.ByDir(ports))
+		workspace.Files[i].ModuleInfos[0].Ports = ports
+	}
+
 	if err := tmplFiles.Execute(rw, workspace); err != nil {
 		panic(err)
 	}

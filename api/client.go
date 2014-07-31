@@ -148,6 +148,10 @@ func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype s
 func (c *Client) Do(req *http.Request, v interface{}) (resp *http.Response, err error) {
 	start := time.Now()
 	defer func() {
+		if err != nil {
+			dbg("client.Do(%s) Error! (%s)", req.URL.Path, err)
+			return
+		}
 		dbg("client.Do(%s) %s (%v)", req.URL.Path, resp.Status, time.Since(start))
 	}()
 
@@ -174,6 +178,10 @@ func (c *Client) Do(req *http.Request, v interface{}) (resp *http.Response, err 
 func (c *Client) DoPlain(req *http.Request) (data []byte, resp *http.Response, err error) {
 	start := time.Now()
 	defer func() {
+		if err != nil {
+			dbg("client.DoPlain(%s) Error! (%s)", req.URL.Path, err)
+			return
+		}
 		dbg("client.DoPlain(%s) %s (%v)", req.URL.Path, resp.Status, time.Since(start))
 	}()
 
