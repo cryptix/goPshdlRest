@@ -8,11 +8,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/visionmedia/go-debug"
 )
+
+var dbg = debug.Debug("pshdlApi")
 
 const (
 	libraryVersion = "0.1"
-	defaultBaseURL = "http://api.pshdl.org/api/v0.1/"
+	defaultBaseURL = "https://api.pshdl.org/api/v0.1/"
 	userAgent      = "pshdlApi/" + libraryVersion
 
 	defaultAccept    = "application/json"
@@ -39,9 +44,12 @@ type Client struct {
 // NewClient returns a new PSHDL REST API client.  If a nil httpClient is
 // provided, http.DefaultClient will be used.
 func NewClient(httpClient *http.Client) *Client {
+	defer dbg("NewClient()")
+
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+
 	baseURL, err := url.Parse(defaultBaseURL)
 	if err != nil {
 		panic(err)
@@ -51,12 +59,15 @@ func NewClient(httpClient *http.Client) *Client {
 	c.Workspace = &WorkspaceService{client: c}
 	c.Compiler = &CompilerService{client: c}
 	c.Streaming = &StreamingService{client: c}
+
 	return c
 }
 
 // NewClientWithID returns a new PSHDL REST API client.  If a nil httpClient is
 // provided, http.DefaultClient will be used.
 func NewClientWithID(httpClient *http.Client, id string) *Client {
+	defer dbg("NewClientWithID(%s)", id)
+
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
@@ -69,6 +80,7 @@ func NewClientWithID(httpClient *http.Client, id string) *Client {
 	c.Workspace = &WorkspaceService{client: c, ID: id}
 	c.Compiler = &CompilerService{client: c, ID: id}
 	c.Streaming = &StreamingService{client: c, ID: id}
+
 	return c
 }
 
@@ -77,7 +89,9 @@ func NewClientWithID(httpClient *http.Client, id string) *Client {
 // Relative URLs should always be specified without a preceding slash.  If
 // specified, the value pointed to by body is JSON encoded and included as the
 // request body.
-func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(method, urlStr string, body interface{}) (req *http.Request, err error) {
+	defer dbg("client.NewRequest[%s]: %s - %v", method, urlStr, err)
+
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -93,7 +107,7 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 		}
 	}
 
-	req, err := http.NewRequest(method, u.String(), buf)
+	req, err = http.NewRequest(method, u.String(), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +118,9 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 }
 
 // NewReaderRequest creates an API request. Uses a io.Reader and ctype instead of marshaling json.
-func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype string) (*http.Request, error) {
+func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype string) (req *http.Request, err error) {
+	defer dbg("client.NewReaderRequest[%s] %s - %v", method, urlStr, err)
+
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -112,7 +128,7 @@ func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype s
 
 	u := c.baseURL.ResolveReference(rel)
 
-	req, err := http.NewRequest(method, u.String(), body)
+	req, err = http.NewRequest(method, u.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +145,11 @@ func (c *Client) NewReaderRequest(method, urlStr string, body io.Reader, ctype s
 // Do sends an API request and returns the API response.  The API response is
 // decoded and stored in the value pointed to by v, or returned as an error if
 // an API error has occurred.
-func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
-	resp, err := c.client.Do(req)
+func (c *Client) Do(req *http.Request, v interface{}) (resp *http.Response, err error) {
+	start := time.Now()
+	defer dbg("client.Do(%v) (%s,%s) took:%v", req, resp, err, time.Since(start))
+
+	resp, err = c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -150,13 +169,17 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 }
 
 // DoPlain sends an API request and returns the API response as a slice of bytes.
-func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
+func (c *Client) DoPlain(req *http.Request) (data []byte, resp *http.Response, err error) {
+	start := time.Now()
+	defer dbg("client.DoPlain(%s) (%s,%s) took:%v", req, resp, err, time.Since(start))
+
 	req.Header.Set("Accept", "text/plain")
 
-	resp, err := c.client.Do(req)
+	resp, err = c.client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	defer resp.Body.Close()
 
 	err = CheckResponse(resp)
@@ -166,7 +189,7 @@ func (c *Client) DoPlain(req *http.Request) ([]byte, *http.Response, error) {
 		return nil, resp, err
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err = ioutil.ReadAll(resp.Body)
 	return data, resp, err
 }
 
@@ -195,10 +218,12 @@ func CheckResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
+
 	errorResponse := &ErrorResponse{Response: r}
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
 	}
+
 	return errorResponse
 }

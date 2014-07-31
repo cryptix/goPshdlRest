@@ -25,6 +25,7 @@ It's not 100% complete but I'm working on it.
 
 
 ## TODO
+* turn service into resources that contain a client
 * More Tests!
 * More Documentation!
 * Add Validate() and RequestSimCode() to clients

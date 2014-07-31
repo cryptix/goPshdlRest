@@ -8,23 +8,43 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/codegangsta/cli"
 	"github.com/cryptix/goPshdlRest/api"
+	"github.com/visionmedia/go-debug"
 	"gopkg.in/fsnotify.v0"
 )
 
-const widFname = ".wid"
+const (
+	appName  = "pshdlSync"
+	widFname = ".wid"
+)
+
+var dbg = debug.Debug(appName)
 
 func main() {
+	app := cli.NewApp()
+	app.Name = appName
+	app.Usage = "sync a remote PSHDL workspace with your filesystem"
+	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "workspace,w", Usage: "specifiy the workspace to connect to"},
+	}
+	app.Action = run
+
+	app.Run(os.Args)
+}
+
+func run(c *cli.Context) {
 	var (
-		err error
-		wp  *pshdlApi.Workspace
+		err    error
+		client *pshdlApi.Client
+		wp     *pshdlApi.Workspace
 	)
-	client := pshdlApi.NewClient(nil)
 
 	widStat, widStatErr := os.Stat(widFname)
 
 	if os.IsNotExist(widStatErr) {
-		_, _, err = client.Workspace.Create()
+		// TODO: pshdlApi.CreateWorkspace()
+		wp, _, err = client.Workspace.Create()
 		check(err)
 		log.Println("Workspace Created:", wp.ID)
 
@@ -36,17 +56,17 @@ func main() {
 		wid, err := ioutil.ReadFile(widFname)
 		check(err)
 
-		client.Workspace.ID = string(wid[:16])
-		client.Compiler.ID = string(wid[:16])
+		// TODO: pshdlApi.OpenWorkspace()
+		client = pshdlApi.NewClientWithID(nil, string(wid[:16]))
 	}
 
 	wp, _, err = client.Workspace.GetInfo()
 	check(err)
-	log.Printf("Workspace Opened:%s", wp.ID)
+	log.Printf("Workspace Opened:%s - PID:%d", wp.ID, os.Getpid())
 	log.Println("Files:")
 	recs := make([]pshdlApi.Record, len(wp.Files))
 	for i, f := range wp.Files {
-		log.Println("*", f.Record.RelPath)
+		log.Printf("* %s\nInfos:%s\n", f.Record.RelPath, f.ModuleInfos)
 		recs[i] = f.Record
 	}
 
@@ -74,8 +94,7 @@ func main() {
 
 	go func() {
 		for ev := range watcher.Events {
-
-			log.Println("event:", ev)
+			dbg("watcher event: %s", ev)
 
 			if strings.HasSuffix(ev.Name, ".pshdl") {
 				switch {
@@ -92,8 +111,12 @@ func main() {
 					}
 					file.Close()
 
+					_, err = client.Compiler.Validate()
+					if err != nil {
+						log.Printf("Validate error: %s\n", err)
+					}
+
 				case ev.Op&fsnotify.Remove == fsnotify.Remove:
-					// TODO: add bool flag
 					log.Println(ev.Name, "deleted, skipping...")
 					// client.Workspace.Delete(ev.Name)
 				}

@@ -29,15 +29,6 @@ type WorkspaceService struct {
 	ID string
 }
 
-// Workspace represents a workspace on the API
-type Workspace struct {
-	ID             string
-	Files          []File
-	LastValIDation int
-	ValIDated      bool
-	JSONVersion    string `json:"JsonVersion"`
-}
-
 // Create creates a new Workspace on the Rest API
 // Currently using form encoded post, want json..!
 func (s *WorkspaceService) Create() (*Workspace, *http.Response, error) {

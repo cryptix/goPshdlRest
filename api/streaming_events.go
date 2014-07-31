@@ -65,15 +65,13 @@ func (ev *CompilerVhdlEvent) GetSubject() string {
 	return ev.Subject
 }
 
-func (ev *CompilerVhdlEvent) GetFiles() []Record {
-	files := make([]Record, len(ev.Contents))
-	for i, f := range ev.Contents {
-		files[i] = f.Files[0]
-		if len(f.Files) != 1 {
-			fmt.Fprintln(os.Stderr, "[!] CompilerVhdlEvent.GetFiles() Warning: Multiple Files inside ContentsRecord.")
+func (ev *CompilerVhdlEvent) GetFiles() (rec []Record) {
+	for _, f := range ev.Contents {
+		for _, r := range f.Files {
+			rec = append(rec, r)
 		}
 	}
-	return files
+	return
 }
 
 // P:COMPILER:C
@@ -99,4 +97,16 @@ func (ev *CompilerCEvent) GetFiles() []Record {
 		}
 	}
 	return files
+}
+
+type PingEvent struct {
+	PshdlEventMetaInfo
+}
+
+func (ev *PingEvent) GetSubject() string {
+	return ev.Subject
+}
+
+func (ev *PingEvent) GetFiles() []Record {
+	return nil
 }

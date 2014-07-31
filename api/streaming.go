@@ -47,6 +47,7 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 
 	go func() {
 		for ev := range sseEvent {
+			dbg("ssEvent: %s", string(ev.Data))
 			var peek struct {
 				Subject string
 				MsgType string
@@ -76,6 +77,9 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 
 			case "P:WORKSPACE:DELETED":
 				apiEvent = new(WorskpaceDeletedEvent)
+
+			case "P:PING":
+				apiEvent = new(PingEvent)
 
 			default:
 				fmt.Fprintf(os.Stderr, "Error unhandeld event type!:%v\n", peek)

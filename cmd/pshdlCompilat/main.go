@@ -10,6 +10,8 @@ import (
 	"github.com/cryptix/goPshdlRest/api"
 )
 
+const widFname = ".wid"
+
 var (
 	streamVHDL = flag.Bool("vhdl", false, "download generated vhdl")
 	streamCSim = flag.Bool("csim", false, "download generated C Simulation code")
@@ -36,27 +38,28 @@ func main() {
 		log.Println("VHDL download active")
 	}
 
-	// check if we have a workspace id file
-	widFile, err := os.Open(".wid")
-	if os.IsNotExist(err) {
-		log.Println("No <.wid> file. Exiting")
-		os.Exit(0)
-	} else if err != nil {
-		if err != nil {
-			log.Fatalf("os.Open(.wid) Error: %s\n", err)
-		}
+	widStat, widStatErr := os.Stat(widFname)
+
+	if os.IsNotExist(widStatErr) {
+		log.Fatal("No .wid file")
 	}
 
-	wid, err := ioutil.ReadAll(widFile)
-	widFile.Close()
+	if !widStat.Mode().IsRegular() {
 
-	client := pshdlApi.NewClientWithID(nil, string(wid))
+	}
+	wid, err := ioutil.ReadFile(widFname)
+	if err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
+
+	// TODO: pshdlApi.OpenWorkspace()
+	client := pshdlApi.NewClientWithID(nil, string(wid[:16]))
 
 	evChan, err := client.Streaming.OpenEventStream()
 	if err != nil {
 		log.Fatalf("Error: %s\n", err)
 	}
-	log.Println("EventStream open")
+	log.Println("EventStream open. PID:", os.Getpid())
 
 	for ev := range evChan {
 		subj := ev.GetSubject()
