@@ -17,7 +17,7 @@ var dbg = debug.Debug("pshdlApi")
 
 const (
 	libraryVersion = "0.1"
-	defaultBaseURL = "https://api.pshdl.org/api/v0.1/"
+	defaultBaseURL = "http://api.pshdl.org/api/v0.1/"
 	userAgent      = "pshdlApi/" + libraryVersion
 
 	defaultAccept    = "application/json"
