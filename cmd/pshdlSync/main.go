@@ -5,80 +5,73 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/cryptix/goPshdlRest/api"
 	"gopkg.in/fsnotify.v0"
 )
 
+const widFname = ".wid"
+
 func main() {
-	var wp *pshdlApi.Workspace
+	var (
+		err error
+		wp  *pshdlApi.Workspace
+	)
 	client := pshdlApi.NewClient(nil)
 
-	// check if we have a workspace id file
-	widFile, err := os.Open(".wid")
-	if err == nil {
-		wid, err := ioutil.ReadAll(widFile)
+	widStat, widStatErr := os.Stat(widFname)
 
-		client = pshdlApi.NewClient(nil)
-		client.Workspace.ID = string(wid[:16])
-		client.Compiler.ID = string(wid[:16])
-
-		wp, _, err = client.Workspace.GetInfo()
-		if err != nil {
-			log.Fatalf("Workspace.GetInfo() API Error: %s\n", err)
-		}
-		log.Printf("Workspace Opened:%s", wp.ID)
-
-		log.Println("Files:")
-		recs := make([]pshdlApi.Record, len(wp.Files))
-		for i, f := range wp.Files {
-			log.Println("*", f.Record.RelPath)
-			recs[i] = f.Record
-		}
-
-		// todo check if files allready there
-		err = client.Workspace.DownloadRecords(recs)
-		if err != nil {
-			log.Fatalf("Workspace.DownloadRecords() API Error: %s\n", err)
-		}
-		log.Println("Download of PSHDL-Code complete.")
-
-	} else if os.IsNotExist(err) {
-		log.Println("No <.wid> file, create new workspace")
-
-		wp, _, err = client.Workspace.Create()
-		if err != nil {
-			log.Fatalf("Workspace.Create() API Error: %s\n", err)
-		}
+	if os.IsNotExist(widStatErr) {
+		_, _, err = client.Workspace.Create()
+		check(err)
 		log.Println("Workspace Created:", wp.ID)
 
-	} else if err != nil {
-		if err != nil {
-			log.Fatalf("os.Open(.wid) Error: %s\n", err)
-		}
+		err = ioutil.WriteFile(widFname, []byte(wp.ID), os.ModePerm-7)
+		check(err)
 	}
-	widFile.Close()
+
+	if widStat.Mode().IsRegular() {
+		wid, err := ioutil.ReadFile(widFname)
+		check(err)
+
+		client.Workspace.ID = string(wid[:16])
+		client.Compiler.ID = string(wid[:16])
+	}
+
+	wp, _, err = client.Workspace.GetInfo()
+	check(err)
+	log.Printf("Workspace Opened:%s", wp.ID)
+	log.Println("Files:")
+	recs := make([]pshdlApi.Record, len(wp.Files))
+	for i, f := range wp.Files {
+		log.Println("*", f.Record.RelPath)
+		recs[i] = f.Record
+	}
+
+	// todo check if files allready there
+	err = client.Workspace.DownloadRecords(recs)
+	check(err)
+	log.Println("Download of PSHDL-Code complete.")
 
 	//todo push containing files
 	log.Println("Starting to watch..")
 
 	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 	defer watcher.Close()
 
 	done := make(chan struct{})
 
+	// Process events
 	go func() {
 		for err := range watcher.Errors {
+			check(err)
 			close(done)
-			log.Fatal(err)
 		}
 	}()
 
-	// Process events
 	go func() {
 		for ev := range watcher.Events {
 
@@ -90,10 +83,7 @@ func main() {
 				case ev.Op&fsnotify.Write == fsnotify.Write:
 					log.Println("write to ", ev.Name, ", uploading...")
 					file, err := os.Open(ev.Name)
-					if err != nil {
-						log.Fatalf("os.Open error: %s\n", err)
-						return
-					}
+					check(err)
 
 					err = client.Workspace.UploadFile(filepath.Base(ev.Name), file)
 					if err != nil {
@@ -103,7 +93,8 @@ func main() {
 					file.Close()
 
 				case ev.Op&fsnotify.Remove == fsnotify.Remove:
-					log.Println(ev.Name, "deleted, removing from api wp...")
+					// TODO: add bool flag
+					log.Println(ev.Name, "deleted, skipping...")
 					// client.Workspace.Delete(ev.Name)
 				}
 			}
@@ -112,16 +103,20 @@ func main() {
 	}()
 
 	cwd, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 
 	err = watcher.Add(cwd)
-	if err != nil {
-		log.Fatal(err)
-	}
+	check(err)
 
 	<-done
 
 	os.Exit(0)
+}
+
+func check(err error) {
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		log.Printf("Fatal from <%s:%d>\n", file, line)
+		log.Fatal("Error:", err)
+	}
 }
