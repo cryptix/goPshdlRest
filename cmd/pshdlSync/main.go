@@ -98,7 +98,8 @@ func run(c *cli.Context) {
 
 			if strings.HasSuffix(ev.Name, ".pshdl") {
 				switch {
-
+				case ev.Op&fsnotify.Create == fsnotify.Create:
+					fallthrough
 				case ev.Op&fsnotify.Write == fsnotify.Write:
 					log.Println("write to ", ev.Name, ", uploading...")
 					file, err := os.Open(ev.Name)
