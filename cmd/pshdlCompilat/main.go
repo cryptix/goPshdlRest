@@ -61,6 +61,10 @@ func main() {
 	}
 	log.Println("EventStream open. PID:", os.Getpid())
 
+	if err = client.Streaming.SendClientConnected(); err != nil {
+		log.Fatalf("Error: %s\n", err)
+	}
+
 	for ev := range evChan {
 		subj := ev.GetSubject()
 		log.Println("[R]", subj)

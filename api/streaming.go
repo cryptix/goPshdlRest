@@ -1,9 +1,11 @@
 package pshdlApi
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/cryptix/goSSEClient"
 )
@@ -14,7 +16,8 @@ type StreamingService struct {
 	// wrapped http client
 	client *Client
 	// current workspace Id
-	ID string
+	ID       string
+	clientID string
 }
 
 type StreamingEvent interface {
@@ -28,12 +31,14 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 		return nil, err
 	}
 
-	clientID, _, err := s.client.DoPlain(req)
+	cid, _, err := s.client.DoPlain(req)
 	if err != nil {
 		return nil, err
 	}
+	s.clientID = string(cid)
+	dbg("OpenEventStream() Client ID:%s", s.clientID)
 
-	req, err = s.client.NewRequest("GET", fmt.Sprintf("streaming/workspace/%s/%s/sse", s.ID, string(clientID)), nil)
+	req, err = s.client.NewRequest("GET", fmt.Sprintf("streaming/workspace/%s/%s/sse", s.ID, s.clientID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +47,7 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	dbg("OpenEventStream sseEvent channel open")
 
 	events := make(chan StreamingEvent)
 
@@ -83,6 +89,7 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 
 			default:
 				fmt.Fprintf(os.Stderr, "Error unhandeld event type!:%v\n", peek)
+				continue
 			}
 
 			dbg("ssEvent: %s", peek.Subject)
@@ -102,4 +109,44 @@ func (s *StreamingService) OpenEventStream() (<-chan StreamingEvent, error) {
 
 	return events, nil
 
+}
+
+type StreamingClientEvent struct {
+	ID        string `json:"clientID"`
+	Timestamp int64  `json:"timeStamp"`
+	Subject   string `json:"subject"`
+}
+
+func (s *StreamingService) SendClientConnected() error {
+	dbg("Streaming.SendClientConnected(%s) Client:%s", s.ID, s.clientID)
+
+	body, err := json.Marshal(StreamingClientEvent{
+		ID:        s.clientID,
+		Timestamp: time.Now().Unix(),
+		Subject:   "P:CLIENT:CONNECTED",
+	})
+	if err != nil {
+		return err
+	}
+
+	req, err := s.client.NewReaderRequest(
+		"POST",
+		fmt.Sprintf("streaming/workspace/%s/%s", s.ID, s.clientID),
+		bytes.NewReader(body),
+		"application/json",
+	)
+	if err != nil {
+		return err
+	}
+
+	resp, err := s.client.Do(req, nil)
+	if err != nil {
+		return nil
+	}
+
+	if err = CheckResponse(resp); err != nil {
+		return err
+	}
+
+	return nil
 }
