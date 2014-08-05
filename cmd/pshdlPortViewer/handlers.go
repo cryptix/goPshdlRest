@@ -29,7 +29,9 @@ var tmplFiles = template.Must(template.New("tmplFiles").Parse(`
 
 {{range .Files}}
 			<h3>{{.Record.RelPath}}</h3>
-			<pre>{{index .ModuleInfos 0}}</pre>
+			{{range .ModuleInfos}}
+				<pre>{{.}}</pre>
+			{{end}}
 {{end}}
 
 </body>
@@ -45,9 +47,11 @@ func handler(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	for i, file := range workspace.Files {
-		ports := file.ModuleInfos[0].Ports
-		sort.Sort(pshdlApi.ByDir(ports))
-		workspace.Files[i].ModuleInfos[0].Ports = ports
+		for j, mi := range file.ModuleInfos {
+			ports := mi.Ports
+			sort.Sort(pshdlApi.ByDir(ports))
+			workspace.Files[i].ModuleInfos[j].Ports = ports
+		}
 	}
 
 	if err := tmplFiles.Execute(rw, workspace); err != nil {
