@@ -21,7 +21,7 @@ func TestCompilerService(t *testing.T) {
 				fmt.Fprint(w, "{}")
 			})
 
-			err := client.Compiler.Validate()
+			_, err := client.Compiler.Validate()
 			So(err, ShouldBeNil)
 		})
 

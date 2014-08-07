@@ -51,8 +51,8 @@ func TestWorkspaceService(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(workspace.ID, ShouldEqual, "1234")
 				So(workspace.JSONVersion, ShouldEqual, "1.0")
-				So(workspace.LastValIDation, ShouldEqual, 0)
-				So(workspace.ValIDated, ShouldBeTrue)
+				So(workspace.LastValidation, ShouldEqual, 0)
+				So(workspace.Validated, ShouldBeTrue)
 			})
 
 			Convey("should decode the File info", func() {
