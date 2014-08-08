@@ -89,14 +89,23 @@ func (ev *CompilerCEvent) GetSubject() string {
 }
 
 func (ev *CompilerCEvent) GetFiles() []Record {
-	files := make([]Record, len(ev.Contents))
-	for i, f := range ev.Contents {
-		files[i] = f.Files[0]
-		if len(f.Files) != 1 {
-			fmt.Fprintln(os.Stderr, "[!] CompilerCEvent.GetFiles() Warning: Multiple Files inside ContentsRecord.")
+	if len(ev.Contents) == 0 {
+		return nil
+	}
+
+	recIdx, recLen := 0, 0
+	for _, f := range ev.Contents {
+		recLen += len(f.Files)
+	}
+	records := make([]Record, recLen)
+
+	for _, f := range ev.Contents {
+		for _, rec := range f.Files {
+			records[recIdx] = rec
+			recIdx++
 		}
 	}
-	return files
+	return records
 }
 
 type PingEvent struct {
