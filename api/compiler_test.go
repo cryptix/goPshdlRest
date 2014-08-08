@@ -28,22 +28,24 @@ func TestCompilerService(t *testing.T) {
 		Convey("RequestSimCode()", func() {
 
 			Convey("should return an error when moduleName is empty", func() {
-				url, err := client.Compiler.RequestSimCode(SimC, "")
+				uris, err := client.Compiler.RequestSimCode(SimC, "")
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "missing moduleName")
-				So(url, ShouldEqual, "")
+				So(uris, ShouldBeNil)
 			})
 
 			Convey("should return an error when SimCodeType is unknown", func() {
-				url, err := client.Compiler.RequestSimCode(23, "SomeModule")
+				uris, err := client.Compiler.RequestSimCode(23, "SomeModule")
 				So(err, ShouldNotBeNil)
 				So(err.Error(), ShouldEqual, "unsupported SimCodeType:23")
-				So(url, ShouldEqual, "")
+				So(uris, ShouldBeNil)
 			})
 
 			Convey("with valid information, should return the dlURL", func() {
 				moduleName := "some.module.mname"
-				dlURL := "/api/v0.1/workspace/1234/src-gen:psex:c:some.module.mname.c"
+				dlURLs := `/api/v0.1/workspace/1234/src-gen:psex:c:de.tuhh.hbubert.MacFir.c
+/api/v0.1/workspace/1234/src-gen:psex:c:pshdl_de_tuhh_hbubert_MacFir_sim.h
+/api/v0.1/workspace/1234/src-gen:psex:c:pshdl_generic_sim.h`
 
 				mux.HandleFunc("/api/v0.1/compiler/1234/psex/c", func(w http.ResponseWriter, r *http.Request) {
 					So(r.Method, ShouldEqual, "POST")
@@ -53,12 +55,13 @@ func TestCompilerService(t *testing.T) {
 						"module": []string{moduleName},
 					})
 
-					http.Error(w, dlURL, http.StatusCreated)
+					http.Error(w, dlURLs, http.StatusCreated)
 				})
 
-				url, err := client.Compiler.RequestSimCode(SimC, moduleName)
+				uris, err := client.Compiler.RequestSimCode(SimC, moduleName)
 				So(err, ShouldBeNil)
-				So(url, ShouldEqual, dlURL) //TODO remove the newline from the returned url
+				So(len(uris), ShouldEqual, 3)
+				// So(url, ShouldEqual, dlURL) //TODO remove the newline from the returned url
 			})
 
 			Convey("with a broken workspace, should return an error and empty url", func() {
@@ -69,9 +72,9 @@ func TestCompilerService(t *testing.T) {
 					http.Error(w, `[{}]`, http.StatusBadRequest)
 				})
 
-				url, err := client.Compiler.RequestSimCode(SimC, "abc")
+				uris, err := client.Compiler.RequestSimCode(SimC, "abc")
 				So(err, ShouldNotBeNil)
-				So(url, ShouldEqual, "")
+				So(uris, ShouldBeNil)
 			})
 		})
 

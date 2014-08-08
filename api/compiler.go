@@ -1,6 +1,7 @@
 package pshdlApi
 
 import (
+	"bufio"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -49,17 +50,17 @@ const (
 
 // RequestSimCode sends a request for simulation code
 // if successfull, it returns the url for downloading the file
-func (s *CompilerService) RequestSimCode(ct SimCodeType, moduleName string) (string, error) {
+func (s *CompilerService) RequestSimCode(ct SimCodeType, moduleName string) (uris []string, err error) {
 	dbg("Compiler.Validate(%s) %d %s", s.ID, ct, moduleName)
 	if moduleName == "" {
-		return "", fmt.Errorf("missing moduleName")
+		return nil, fmt.Errorf("missing moduleName")
 	}
 	var reqURL string
 	switch ct {
 	case SimC:
 		reqURL = fmt.Sprintf("compiler/%s/psex/c", s.ID)
 	default:
-		return "", fmt.Errorf("unsupported SimCodeType:%d", ct)
+		return nil, fmt.Errorf("unsupported SimCodeType:%d", ct)
 	}
 
 	param := url.Values{}
@@ -67,25 +68,33 @@ func (s *CompilerService) RequestSimCode(ct SimCodeType, moduleName string) (str
 
 	req, err := s.client.NewReaderRequest("POST", reqURL, strings.NewReader(param.Encode()), "")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	body, resp, err := s.client.DoPlain(req)
+	resp, err := s.client.Do(req, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("error: RequestSimCode: Code was not created")
+		return nil, fmt.Errorf("error: RequestSimCode: Code was not created")
 	}
 
-	url := string(body)
+	uriScanner := bufio.NewScanner(resp.Body)
 
-	if !strings.HasPrefix(url, fmt.Sprintf("/api/v0.1/workspace/%s/src-gen:psex:", s.ID)) {
-		return "", fmt.Errorf("error: RequestSimCode: invalid url returned: %s", url)
+	for uriScanner.Scan() {
+		uri := uriScanner.Text()
+		if !strings.HasPrefix(uri, fmt.Sprintf("/api/v0.1/workspace/%s/src-gen:psex:", s.ID)) {
+			return nil, fmt.Errorf("error: RequestSimCode: invalid url returned: %s", uri)
+		}
+
+		uris = append(uris, uri)
 	}
 
-	url = strings.TrimSpace(url)
+	if err := uriScanner.Err(); err != nil {
+		return nil, err
+	}
 
-	return url, nil
+	return
 }
