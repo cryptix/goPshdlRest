@@ -11,7 +11,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/cryptix/goPshdlRest/api"
 	"github.com/visionmedia/go-debug"
-	"gopkg.in/fsnotify.v0"
+	"gopkg.in/fsnotify.v1"
 )
 
 const (
