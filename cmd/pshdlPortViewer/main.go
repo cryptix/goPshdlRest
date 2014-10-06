@@ -36,10 +36,10 @@ func main() {
 	app.Action = run
 
 	app.Run(os.Args)
-
 }
 
 func run(c *cli.Context) {
+	var err error
 
 	wid := c.String("workspace")
 	if wid == "" {
@@ -48,8 +48,16 @@ func run(c *cli.Context) {
 	}
 
 	// Start LiveReload server
-	lrs, err := lrserver.NewLRServer(nil)
-	check(err)
+	errc := make(chan error)
+	go func() {
+		errc <- lrserver.ListenAndServe()
+	}()
+
+	select {
+	case err = <-errc:
+		check(err)
+	case <-time.After(time.Second * 1):
+	}
 
 	apiClient = pshdlApi.NewClientWithID(nil, wid)
 
@@ -68,7 +76,7 @@ func run(c *cli.Context) {
 			switch {
 			case strings.HasPrefix(subj, "P:WORKSPACE:"):
 				updateWorkspace()
-				lrs.Reload("workspaceUpdate")
+				lrserver.Reload("workspaceUpdate")
 			}
 		}
 	}()
@@ -76,11 +84,10 @@ func run(c *cli.Context) {
 	listenAddr := fmt.Sprintf("%s:%d", c.String("host"), c.Int("port"))
 
 	// Start serving html
-	errc := make(chan error)
 	go func() {
 		select {
-		case e := <-errc:
-			check(e)
+		case err = <-errc:
+			check(err)
 		case <-time.After(time.Millisecond * 150):
 			log.Println("Opening Browser")
 			err = open.Run("http://" + listenAddr)
