@@ -1,5 +1,6 @@
 goPshdlRest
 ===========
+[![Build Status](https://travis-ci.org/cryptix/goPshdlRest.png?branch=master)](https://travis-ci.org/cryptix/goPshdlRest)
 
 This package provides access to the [PSHDL](http://pshdl.org) REST API.
 
