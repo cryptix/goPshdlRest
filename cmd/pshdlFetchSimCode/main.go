@@ -25,9 +25,11 @@ func main() {
 	app.Name = appName
 	app.Usage = "request simulation code and download it"
 	app.Flags = []cli.Flag{
+		cli.StringFlag{Name: "lang,l", Value: "c", Usage: "In which language"},
 		cli.StringFlag{Name: "workspace,w", Value: "", Usage: "The workspace to use"},
 		cli.StringFlag{Name: "module,m", Value: "", Usage: "The module that should be requested"},
 		cli.BoolFlag{Name: "base,b", Usage: "strip the relPath to it's base"},
+		cli.StringFlag{Name: "dir,d", Value: "", Usage: "The dir where downloaded code should be stored"},
 	}
 	app.Action = run
 
@@ -49,7 +51,20 @@ func run(c *cli.Context) {
 	}
 
 	apiClient = pshdlApi.NewClientWithID(nil, wid)
-	uris, err := apiClient.Compiler.RequestSimCode(pshdlApi.SimC, moduleName)
+
+	// TODO push this into the api
+	var simLang pshdlApi.SimCodeType
+	switch c.String("lang") {
+	case "c":
+		simLang = pshdlApi.SimC
+	case "go":
+		simLang = pshdlApi.SimGo
+	default:
+		log.Println("Unknown SimCodeType")
+		os.Exit(1)
+	}
+
+	uris, err := apiClient.Compiler.RequestSimCode(simLang, moduleName)
 	check(err)
 
 	// construct []Record

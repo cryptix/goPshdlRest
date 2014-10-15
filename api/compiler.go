@@ -44,6 +44,7 @@ const (
 	SimPsex SimCodeType = iota
 	SimJava
 	SimC
+	SimGo
 	SimDart
 	SimJavaScript
 )
@@ -55,10 +56,13 @@ func (s *CompilerService) RequestSimCode(ct SimCodeType, moduleName string) (uri
 	if moduleName == "" {
 		return nil, fmt.Errorf("missing moduleName")
 	}
+
 	var reqURL string
 	switch ct {
 	case SimC:
 		reqURL = fmt.Sprintf("compiler/%s/psex/c", s.ID)
+	case SimGo:
+		reqURL = fmt.Sprintf("compiler/%s/psex/go", s.ID)
 	default:
 		return nil, fmt.Errorf("unsupported SimCodeType:%d", ct)
 	}
