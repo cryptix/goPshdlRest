@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/cryptix/goPshdlRest/api"
-
 	"github.com/visionmedia/go-debug"
 )
 
@@ -27,6 +27,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "workspace,w", Value: "", Usage: "The workspace to use"},
 		cli.StringFlag{Name: "module,m", Value: "", Usage: "The module that should be requested"},
+		cli.BoolFlag{Name: "base,b", Usage: "strip the relPath to it's base"},
 	}
 	app.Action = run
 
@@ -56,6 +57,9 @@ func run(c *cli.Context) {
 	for i, uri := range uris {
 		uriParts := strings.Split(uri, "/")
 		relPath := strings.Replace(uriParts[len(uriParts)-1], ":", "/", -1)
+		if c.Bool("base") {
+			relPath = filepath.Base(relPath)
+		}
 
 		recs[i] = pshdlApi.Record{
 			FileURI: uri,
